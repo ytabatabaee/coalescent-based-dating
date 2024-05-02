@@ -15,10 +15,13 @@ def convert_to_unit_tree(args):
         if node.taxon is not None:
             continue
         elif node.edge.length:
-            left = node._child_nodes[0]
+            max_child_length = 0
+            for child in node._child_nodes:
+                if child.edge.length > max_child_length: 
+                    max_child_length = child.edge.length
             print(node.edge.length)
-            node.edge.length = node.edge.length + left.edge.length
-            tree_height = node.edge.length
+            node.edge.length = node.edge.length + max_child_length
+            tree_height = max(tree_height, node.edge.length)
 
     print('tree height:', tree_height)
     for node in t2.postorder_node_iter():

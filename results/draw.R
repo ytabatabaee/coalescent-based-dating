@@ -129,14 +129,11 @@ head(m)
 nrow(m)
 unique(m$Method)
 m$se = (m$l.est - m$l.true)^2 
-mvariants = m$Method %in% c("Naive")
-names(m) =  c(names(s)[1:4],"AD", "GTEE", names(s)[5:7])
 m$outgroup = factor(grepl("outgroup.0", m$Condition))
-m$Method = factor(m$Method, levels=c('LSD+CASTLES', 'LSD+Concat+RAxML', 'wLogDate+CASTLES', 'wLogDate+Concat+RAxML'))
-#m$ratevar =  unique(sub(".genes.*","",sub("outgroup.*.species.","",m$Condition)))
+m$Method = factor(m$Method, levels=c('LSD+CASTLES', 'LSD+Concat+RAxML', 'wLogDate+CASTLES', 'wLogDate+Concat+RAxML', 'MD-Cat+CASTLES', 'MD-Cat+Concat+RAxML'))
+m$ratevar = factor(sub(".genes.*","",sub("outgroup.*.species.","",m$Condition)))
 
 ### Comment out to include negative branch lengths.
-summary(with(m[m$Method =="CASTLES" ,],l.est < 0))
 m$l.est = ifelse(m$l.est <=0, 1e-6, m$l.est)
 m$log10err = log10(m$l.est / m$l.true )
 m$abserr = abs(m$l.true - m$l.est)
@@ -144,9 +141,9 @@ m$se = (m$l.est - m$l.true)^2
 
 ggplot(aes(color=Method, y=log10err,x=cut(AD,4)),
        data=merge(
-         dcast(data=m[!mvariants & m$outgroup ==TRUE,],
+         dcast(data=m[m$outgroup ==FALSE,],
                outgroup+Method+replicate~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x))),
-         dcast(data=m[!mvariants  & m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+         dcast(data=m[m$outgroup ==FALSE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
   scale_y_continuous(trans="identity",name="Mean log error")+
   #facet_wrap(~outgroup,ncol=2,labeller = label_both)+
   scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T),name="True gene tree discordance (ILS)")+
@@ -160,67 +157,72 @@ ggplot(aes(color=Method, y=log10err,x=cut(AD,4)),
   theme(legend.position =  "bottom", legend.direction = "horizontal",
         legend.box.margin = margin(0), legend.margin = margin(0),
         axis.text.x = element_text(angle=0,size=11))+
-  coord_cartesian(ylim=c(0.6,2.1))+
   guides(color=guide_legend(nrow=2, byrow=TRUE),
          fill=guide_legend(nrow=2, byrow=TRUE))
 ggsave("MV-logerr-perrep-ILS-bymethod_dating.pdf",width=6.2*0.95,height = 4.3*0.95)
 
-ggplot(aes(color=Method, y=log10err,x=cut(AD,c(0,25,35,50,60,70,85)/100)),
+ggplot(aes(x=ratevar, y=l.est-l.true,color=Method),
+       data=m[m$outgroup ==FALSE,])+
+  scale_y_continuous(trans="identity",name=expression("Est." - "true length (bias)"))+
+  scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T))+
+  stat_summary(position = position_dodge(width=0.9),size=0.8,fun.data = mean_sdl)+
+  #geom_boxplot(outlier.size = 0)+
+  #scale_color_manual(values=c("black","grey50"),name="",labels=c("With outgroup","No outgroup"))+
+  #scale_shape(name="",labels=c("With outgroup","No outgroup"))+
+  #scale_color_brewer(palette = 1,labels=c("High","Med","Low"),name="Clock deviation",direction = -1)+
+  theme_bw()+
+  theme(legend.position =  "bottom", legend.direction = "horizontal",
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle=0))+
+  scale_color_brewer(palette = "Paired",name="")+
+  geom_hline(color="grey50",linetype=1,yintercept = 0)+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE))
+ggsave("MV-bias_dating.pdf",width=5,height = 5)
+
+
+ggplot(aes(color=Method, y=abserr,x=cut(AD,4)),
        data=merge(
-         dcast(data=m[!mvariants & m$outgroup ==TRUE & !grepl("Pat",m$Method),],
-               outgroup+Method+replicate~'log10err' ,
-               value.var = "log10err",fun.aggregate = function(x) mean(abs(x))),
-         dcast(data=m[!mvariants  & m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
-  scale_y_continuous(trans="identity",name="Mean log10 error")+
+         dcast(data=m[m$outgroup ==FALSE,],
+               outgroup+Method+replicate~'abserr' ,value.var = "abserr",fun.aggregate = mean),
+         dcast(data=m[m$outgroup ==FALSE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+  scale_y_continuous(trans="identity",name="Mean absolute error")+
+  #facet_wrap(~outgroup,ncol=2,labeller = label_both)+
+  scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T),name="True gene tree discordance (ILS)")+
+  geom_boxplot(outlier.alpha = 0.3,width=0.8,outlier.size = 0.8)+
+  stat_summary(position = position_dodge(width=0.8))+
+  #geom_boxplot(outlier.size = 0)+
+  scale_color_manual(values=c("black","grey50"),name="",labels=c("With outgroup","No outgroup"))+
+  scale_shape(name="",labels=c("With outgroup","No outgroup"))+
+  scale_color_brewer(palette = "Paired",name="")+
+  theme_bw()+
+  theme(legend.position =  "bottom", legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0,size=11))+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE))
+ggsave("MV-abserr-perrep-ILS-bymethod_dating.pdf",width=6.2*0.95,height = 4.3*0.95)
+
+ggplot(aes(color=Method, y=abserr,x=cut(AD,4)),
+       data=merge(
+         dcast(data=m[m$outgroup ==FALSE,],
+               outgroup+Method+replicate~'abserr' ,value.var = "abserr",fun.aggregate = mean),
+         dcast(data=m[m$outgroup ==FALSE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+  scale_y_continuous(trans="identity",name="Mean absolute error")+
   #facet_wrap(~outgroup,ncol=2,labeller = label_both)+
   scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T),name="True gene tree discordance (ILS)")+
   #geom_boxplot(outlier.alpha = 0.3,width=0.8,outlier.size = 0.8)+
   stat_summary()+
   stat_summary(aes(group=Method),geom="line")+
-  scale_color_brewer(palette = "Paired",name="")+
   #geom_boxplot(outlier.size = 0)+
+  scale_color_manual(values=c("black","grey50"),name="",labels=c("With outgroup","No outgroup"))+
   scale_shape(name="",labels=c("With outgroup","No outgroup"))+
+  scale_color_brewer(palette = "Paired",name="")+
   theme_bw()+
-  theme(legend.position =  c(.2,.8), 
+  theme(legend.position =  "bottom", legend.direction = "horizontal",
         legend.box.margin = margin(0), legend.margin = margin(0),
         axis.text.x = element_text(angle=0,size=11))+
-  coord_cartesian(ylim=c(0.8,2.1))
-ggsave("MV-logerr-ILS-dating.pdf",width=6,height = 4)
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE))
+ggsave("MV-abserr-ILS-line.pdf",width=6.2*0.95,height = 4.3*0.95)
 
-ggplot(aes(x=Method, y=l.true-l.est,color=Method),
-       data=m[!mvariants,])+
-  scale_y_continuous(trans="identity",name=expression("True" - "Estimated length (bias)"))+
-  scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T))+
-  stat_summary(position = position_dodge(width=0.9),size=0.8,fun.data = mean_sdl)+
-  #geom_boxplot(outlier.size = 0)+
-  #scale_color_manual(values=c("black","grey50"),name="",labels=c("With outgroup","No outgroup"))+
-  scale_shape(name="",labels=c("With outgroup","No outgroup"))+
-  scale_color_brewer(palette = 1,labels=c("High","Med","Low"),name="Clock deviation",direction = -1)+
-  theme_bw()+
-  theme(legend.position =  "bottom", legend.direction = "horizontal",
-        axis.title.x = element_blank(),
-        axis.text.x = element_text(angle=0))+
-  geom_hline(color="grey50",linetype=1,yintercept = 0)+
-  guides(color=guide_legend(nrow=1, byrow=TRUE),
-         fill=guide_legend(nrow=1, byrow=TRUE))
-ggsave("MV-bias_bymethod_pc3_dating.pdf",width=6.4,height = 5)
-
-ggplot(aes(x=ratevar, y=l.true-l.est,color=Method,shape=outgroup),
-       data=m[!mvariants,])+
-  scale_y_continuous(trans="identity",name=expression("True" - "Estimated length (bias)"))+
-  scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T))+
-  stat_summary(position = position_dodge(width=0.9),size=0.8,fun.data = mean_sdl)+
-  #geom_boxplot(outlier.size = 0)+
-  #scale_color_manual(values=c("black","grey50"),name="",labels=c("With outgroup","No outgroup"))+
-  #scale_fill_manual(values=c("white","grey70"),name="",labels=c("With outgroup","No outgroup"))+
-  scale_color_brewer(palette = "Dark2",name="")+
-  scale_shape(name="",labels=c("With outgroup","No outgroup"))+
-  scale_x_discrete(labels=c("High","Med","Low"),name="Clock deviation")+
-  theme_bw()+
-  theme(legend.position =  "bottom", legend.direction = "horizontal",
-        axis.title.x = element_blank(),
-        axis.text.x = element_text(angle=0))+
-  geom_hline(color="grey50",linetype=1,yintercept = 0)+
-  guides(color=guide_legend(nrow=3, byrow=TRUE),
-         fill=guide_legend(nrow=3, byrow=TRUE))
-ggsave("MV-bias_pc3.pdf",width=6.4,height = 5)
