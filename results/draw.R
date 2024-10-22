@@ -1,6 +1,123 @@
 require(ggplot2);require(reshape2);require(scales);require(ggpubr);require(tidyr);require(ggpattern)
 
 
+s3=read.csv('s100_dating_normalized_n3_castles_pro_node_age.csv')
+s10=read.csv('s100_dating_normalized_n10_castles_pro_node_age.csv')
+
+#s0$Calibrations <- 0
+s3$Calibrations <- 3
+s10$Calibrations <- 10
+s <- rbind(s3,s10)
+
+s$Method = factor(s$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)'))
+s$Condition =  factor(s$Condition) 
+levels(s$Condition) = list("200bp" = "fasttree_genetrees_200_non", 
+                           "400bp" = "fasttree_genetrees_400_non", 
+                           "800bp" = "fasttree_genetrees_800_non",
+                           "1600bp" = "fasttree_genetrees_1600_non",
+                           "true gene trees" = "truegenetrees")
+s$isconcat = factor(grepl("Concat", s$Method))
+s$log10err = log10(s$age.est / s$age.true )
+s$abserr = abs(s$age.true - s$age.est)
+s$se = (s$age.est - s$age.true)^2 
+
+dtemp=dcast(data=s,
+            Condition+Method+replicate+Calibrations+Taxon.Type+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean)
+dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
+dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod) %>%
+  summarise(abserr = mean(abserr)) %>% pivot_wider(names_from = isconcat,values_from = abserr) %>%
+  
+  ggplot(aes(color=datingMethod))+
+  scale_y_continuous(trans="identity",name="Mean absolute error")+
+  facet_wrap(~Condition,ncol=4)+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "5"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-4)/8,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-4)/8),
+               arrow = arrow(length = unit(4,'pt')))+
+  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  theme_classic()+
+  theme(legend.position =  c(0.7,0.75), legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         shape='none')
+ggsave("S100-error-perrep_dating_calib_pro-node-age-arrow.pdf",width=6,height = 2.5)
+
+ggplot(aes(x=as.factor(Calibrations),y=abserr,color=Method),
+       data=dcast(data=s, Condition+Calibrations+Method+replicate+Taxon.Type~'abserr' ,value.var = "abserr",fun.aggregate = mean))+
+  scale_y_continuous(trans="identity",name="Mean absolute error")+
+  facet_wrap(~Condition,ncol=4)+
+  #geom_boxplot(outlier.alpha = 0.3,width=0.86)+
+  #stat_summary(position = position_dodge(width=0.86))+
+  scale_x_discrete(name="Number of Calibrations",labels=c('0', '3', '10'))+
+  stat_summary()+
+  stat_summary(aes(group=Method),geom="line")+
+  scale_fill_brewer(palette = "Paired")+
+  scale_color_brewer(palette = "Paired",name="")+
+  theme_classic()+
+  theme(legend.position = "none", legend.direction = "horizontal")+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE))
+#coord_cartesian(ylim=c(0,0.2),xlim=c(1,5),clip="off")
+ggsave("S100-error-perrep_dating_calib_pro-node-age.pdf",width=7,height =2.5)
+
+ggplot(aes(x=as.factor(Calibrations),y=age.est-age.true,color=Method), data=s[!s$Condition=='true gene trees',])+
+  geom_hline(color="grey50",linetype=1,yintercept = 0)+
+  scale_y_continuous(name=expression("Bias (est. - true length)"))+
+  stat_summary()+
+  stat_summary(aes(group=Method),geom="line")+
+  facet_wrap(~Condition,ncol=4)+
+  #geom_boxplot(outlier.size = 0)+
+  scale_fill_brewer(palette = "Paired")+
+  scale_color_brewer(palette = "Paired",name="")+
+  theme_classic()+
+  theme(legend.position = "none", legend.direction = "horizontal",
+        axis.title.x = element_blank())+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE))
+#coord_cartesian(xlim=c(1,5),clip="off",ylim=c(-0.06,0.125))
+ggsave("S100-bias_dating_calib_broken-line_node_age.pdf",width=9,height = 2.5)
+
+s3=read.csv('s100_dating_n3_castles_pro_tmrca.csv')
+s10=read.csv('s100_dating_n10_castles_pro_tmrca.csv')
+
+#s0$Calibrations <- 0
+s3$Calibrations <- 3
+s10$Calibrations <- 10
+s <- rbind(s3,s10)
+
+s$Method = factor(s$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)'))
+s$Condition =  factor(s$Condition) 
+levels(s$Condition) = list("200bp" = "fasttree_genetrees_200_non", 
+                           "400bp" = "fasttree_genetrees_400_non", 
+                           "800bp" = "fasttree_genetrees_800_non",
+                           "1600bp" = "fasttree_genetrees_1600_non",
+                           "true gene trees" = "truegenetrees")
+s$isconcat = factor(grepl("Concat", s$Method))
+s$log10err = log10(s$l.est / s$l.true )
+s$abserr = abs(s$l.true - s$l.est)
+s$se = (s$l.est - s$l.true)^2 
+
+ggplot(aes(x=Condition, y=l.true/l.est,color=Method,shape=isconcat),
+       data=s)+
+  scale_y_continuous(trans="identity",name=expression("True / estimated tMRCA"))+
+  scale_x_discrete(name="Sequence length")+
+  coord_cartesian(ylim=c(0,3))+
+  facet_wrap(~Calibrations)+
+  geom_boxplot(outlier.alpha = 0.3,width=0.8,outlier.size = 0.8)+
+  stat_summary(position = position_dodge(width=0.8))+
+  theme_classic()+
+  theme(legend.position =  "none", legend.direction = "horizontal",
+        axis.text.x = element_text(angle=0))+
+  scale_color_brewer(palette = "Paired",name="")+
+  geom_hline(color="grey50",linetype=1,yintercept = 1)+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE))
+ggsave("S100-tmrca-bias_dating_calib_root-unfixed.pdf",width=6,height = 3)
+
+
 s0=read.csv('s100_dating_unit.no_OG_castles_pro.csv')
 s3=read.csv('s100_dating_normalized_n3.no_OG_castles_pro.csv')
 s10=read.csv('s100_dating_normalized_n10.no_OG_castles_pro.csv')
@@ -14,7 +131,7 @@ s3$Calibrations <- 3
 s10$Calibrations <- 10
 s <- rbind(s0,s3,s10)
 
-s=read.csv('s100_dating_unit_castles_pro_genes.csv')
+#s=read.csv('s100_dating_unit_castles_pro_genes.csv')
 s$Method = factor(s$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)'))
 s$Condition =  factor(s$Condition) 
 levels(s$Condition) = list("200bp" = "fasttree_genetrees_200_non", 
@@ -256,7 +373,7 @@ ggplot(aes(x= Condition,y=l.est-l.true,color=Method), data=s[!s$Condition=='true
 ggsave("S100-bias_dating_calib.pdf",width=9,height = 4)
 
 ggplot(aes(x=as.factor(genes),y=abserr,color=Method),
-       data=dcast(data=s[s$Condition=='800bp',], Condition+genes+Method+replicate+Branch.Type~'abserr' ,value.var = "abserr",fun.aggregate = mean))+
+       data=dcast(data=s, Condition+genes+Method+replicate+Branch.Type~'abserr' ,value.var = "abserr",fun.aggregate = mean))+
   scale_y_continuous(trans="identity",name="Mean absolute error")+
   facet_wrap(~Condition,ncol=4)+
   #geom_boxplot(outlier.alpha = 0.3,width=0.86)+
@@ -290,7 +407,32 @@ ggplot(aes(x=as.factor(Calibrations),y=abserr,color=Method),
   guides(color=guide_legend(nrow=2, byrow=TRUE),
          fill=guide_legend(nrow=2, byrow=TRUE))
 #coord_cartesian(ylim=c(0,0.2),xlim=c(1,5),clip="off")
-ggsave("S100-error-perrep_dating_calib.pdf",width=7,height =2.5)
+ggsave("S100-error-perrep_dating_calib_no_OG.pdf",width=7,height =2.5)
+
+dtemp=dcast(data=s,
+            Condition+Method+replicate+Calibrations+Branch.Type+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean)
+dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
+dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod) %>%
+  summarise(abserr = mean(abserr)) %>% pivot_wider(names_from = isconcat,values_from = abserr) %>%
+  
+  ggplot(aes(color=datingMethod))+
+  scale_y_continuous(trans="identity",name="Mean absolute error")+
+  facet_wrap(~Condition,ncol=4)+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "10"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-4)/8,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-4)/8),
+               arrow = arrow(length = unit(4,'pt')))+
+  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  theme_classic()+
+  theme(legend.position =  'none', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         shape='none')
+ggsave("S100-error-perrep_dating_calib-arrow_no_OG.pdf",width=6,height = 2.5)
+
 
 ggplot(aes(x=Condition,y=abserr,color=Method),
        data=dcast(data=s, Condition+Method+replicate+Branch.Type+Calibrations~'abserr' ,value.var = "abserr",fun.aggregate = mean))+
@@ -438,7 +580,6 @@ m$outgroup = factor(grepl("outgroup.0", m$Condition))
 m$Method = factor(m$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'))
 m$ratevar = factor(sub(".genes.*","",sub("outgroup.*.species.","",m$Condition)))
 m$isconcat = factor(grepl("Concat", m$Method))
-m$l.est = ifelse(m$l.est <=0, 1e-6, m$l.est)
 m$log10err = log10(m$l.est / m$l.true )
 m$abserr = abs(m$l.true - m$l.est)
 m$se = (m$l.est - m$l.true)^2 
@@ -447,11 +588,11 @@ m$se = (m$l.est - m$l.true)^2
 ggplot(aes(color=Method, shape=isconcat,y=log10err,x=Calibrations),
        data=merge(
          dcast(data=m[m$outgroup ==FALSE,],
-               outgroup+Method+replicate+Calibrations~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x))),
+               outgroup+Method+replicate+Calibrations+isconcat~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x))),
          dcast(data=m[m$outgroup ==FALSE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
   scale_y_continuous(trans="identity",name="Mean log error")+
   scale_x_discrete(name="True gene tree discordance (ILS)")+
-  facet_wrap(~cut(AD,4))+
+  facet_wrap(~cut(AD,4),ncol=4)+
   geom_boxplot(outlier.alpha = 0.3,width=0.8,outlier.size = 0.8)+
   stat_summary(position = position_dodge(width=0.8))+
   scale_color_manual(values=c("black","grey50"),name="",labels=c("With outgroup","No outgroup"))+
