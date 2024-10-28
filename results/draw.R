@@ -12,6 +12,8 @@ s3$Calibrations <- 3
 s10$Calibrations <- 10
 s <- rbind(s0,s3,s10)
 
+s=read.csv('s100_dating_castles_pro.csv')
+
 s$Method = factor(s$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)'))
 s$Condition =  factor(s$Condition) 
 levels(s$Condition) = list("200bp" = "fasttree_genetrees_200_non", 
@@ -29,29 +31,27 @@ dtemp=dcast(data=s,
 dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
 dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod) %>%
   summarise(abserr = mean(abserr)) %>% pivot_wider(names_from = isconcat,values_from = abserr) %>%
-  
   ggplot(aes(color=datingMethod))+
   scale_y_continuous(trans="identity",name="Mean absolute error")+
   facet_wrap(~Condition,ncol=4)+
-  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "5"))+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "10"))+
   geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
                    x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-4)/8,
                    xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-4)/8),
                arrow = arrow(length = unit(4,'pt')))+
   scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
   theme_classic()+
-  theme(legend.position =  c(0.7,0.75), legend.direction = "horizontal",
+  theme(legend.position =  'none', legend.direction = "horizontal",
         legend.box.margin = margin(0), legend.margin = margin(0),
         axis.text.x = element_text(angle=0))+
   guides(color=guide_legend(nrow=3, byrow=TRUE),
-         fill=guide_legend(nrow=3, byrow=TRUE),
-         shape='none')
+         fill=guide_legend(nrow=3, byrow=TRUE), shape='none')
 ggsave("S100-error-perrep_dating_calib_pro-node-age-arrow.pdf",width=6,height = 2.5)
 
 ggplot(aes(x=as.factor(Calibrations),y=abserr,color=Method),
        data=dcast(data=s, Condition+Calibrations+Method+replicate+Taxon.Type~'abserr' ,value.var = "abserr",fun.aggregate = mean))+
   scale_y_continuous(trans="identity",name="Mean absolute error")+
-  facet_wrap(~Condition,ncol=4)+
+  facet_wrap(~Condition)+
   #geom_boxplot(outlier.alpha = 0.3,width=0.86)+
   #stat_summary(position = position_dodge(width=0.86))+
   scale_x_discrete(name="Number of Calibrations",labels=c('0', '3', '10'))+
@@ -129,6 +129,8 @@ s10$Calibrations <- 10
 s <- rbind(s0,s3,s10)
 
 ## Varying number of genes
+s=read.csv('s100_dating_normalized_n3_genes.csv')
+s$Calibrations <- 3
 s$Method = factor(s$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)'))
 s$Condition =  factor(s$Condition) 
 levels(s$Condition) = list("200bp" = "fasttree_genetrees_200_non", 
@@ -137,7 +139,6 @@ levels(s$Condition) = list("200bp" = "fasttree_genetrees_200_non",
                            "1600bp" = "fasttree_genetrees_1600_non",
                            "true gene trees" = "truegenetrees")
 s$isconcat = factor(grepl("Concat", s$Method))
-
 s$l.est = ifelse(s$l.est <=0, 1e-6, s$l.est)
 s$log10err = log10(s$l.est / s$l.true )
 s$abserr = abs(s$l.true - s$l.est)
@@ -145,9 +146,6 @@ s$se = (s$l.est - s$l.true)^2
 
 ggplot(data=dcast(data=s,Method+replicate+isconcat+genes+Condition~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x))), aes(x=as.factor(genes),y=log10err,color=Method,shape=isconcat))+
   scale_y_continuous(trans="identity",name="Mean log10 error")+
-  #geom_boxplot(outlier.alpha = 0.3,width=0.86)+
-  #stat_summary(position = position_dodge(width=0.86))+
-  #geom_boxplot(outlier.size = 0)+
   facet_wrap(~Condition,ncol=4)+
   stat_summary()+
   stat_summary(aes(group=Method),geom="line")+
@@ -162,12 +160,10 @@ ggplot(data=dcast(data=s,Method+replicate+isconcat+genes+Condition~'log10err' ,v
 ggsave("S100-dating_error-logerror_pro_n3.pdf",width=4,height = 3)
 
 
-ggplot(aes(x=as.factor(genes),y=abserr,color=Method),
-       data=dcast(data=s, Condition+genes+Method+replicate+Branch.Type~'abserr' ,value.var = "abserr",fun.aggregate = mean))+
+ggplot(aes(x=as.factor(genes),y=abserr,color=Method,shape=isconcat),
+       data=dcast(data=s, Condition+genes+Method+replicate+Branch.Type+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean))+
   scale_y_continuous(trans="identity",name="Mean absolute error")+
   facet_wrap(~Condition,ncol=4)+
-  #geom_boxplot(outlier.alpha = 0.3,width=0.86)+
-  #stat_summary(position = position_dodge(width=0.86))+
   scale_x_discrete(name="Number of genes")+
   stat_summary()+
   stat_summary(aes(group=Method),geom="line")+
@@ -177,15 +173,13 @@ ggplot(aes(x=as.factor(genes),y=abserr,color=Method),
   theme(legend.position = "none", legend.direction = "horizontal")+
   guides(color=guide_legend(nrow=2, byrow=TRUE),
          fill=guide_legend(nrow=2, byrow=TRUE))
-#coord_cartesian(ylim=c(0,0.2),xlim=c(1,5),clip="off")
-ggsave("S100-error-perrep_dating_calib_pro.pdf",width=7,height =2.5)
+ggsave("S100-abserr_dating_genes_n3.pdf",width=7,height =3)
 
 dtemp=dcast(data=s,
             Condition+Method+replicate+genes+Branch.Type+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean)
 dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
 dtemp %>% group_by(Condition,genes,isconcat,datingMethod) %>%
   summarise(abserr = mean(abserr)) %>% pivot_wider(names_from = isconcat,values_from = abserr) %>%
-  
   ggplot(aes(color=datingMethod))+
   scale_y_continuous(trans="identity",name="Mean absolute error")+
   facet_wrap(~Condition,ncol=4)+
@@ -201,7 +195,7 @@ dtemp %>% group_by(Condition,genes,isconcat,datingMethod) %>%
         axis.text.x = element_text(angle=0))+
   guides(color=guide_legend(nrow=3, byrow=TRUE),
          fill=guide_legend(nrow=3, byrow=TRUE),shape='none')
-ggsave("S100-error-perrep_dating_calib_pro-arrow.pdf",width=7,height = 2.5)
+ggsave("S100-abserr_dating_genes_n3-arrow.pdf",width=8,height = 2.5)
 
 
 
@@ -821,7 +815,6 @@ ggplot(aes(x=as.factor(Calibrations), y=l.est-l.true,color=Method,shape=isconcat
   theme(legend.position =  "none", legend.direction = "horizontal",
         axis.text.x = element_text(angle=0))+
   scale_color_brewer(palette = "Paired",name="")+
-  #scale_shape_manual(guide="none")+
   geom_hline(color="grey50",linetype=1,yintercept = 0)+
   guides(color=guide_legend(nrow=2, byrow=TRUE),shape="none")
 ggsave("MV-bias-ratevar_dating_bycalib-pro.pdf",width=4.5,height = 3.5)
@@ -842,25 +835,26 @@ ggplot(aes(x=as.factor(Calibrations), y=l.est-l.true,color=Method,shape=isconcat
   guides(color=guide_legend(nrow=2, byrow=TRUE),shape="none")
 ggsave("legend.pdf",width=8,height = 3.5)
 
-ggplot(aes(x=cut(AD,4), y=l.est-l.true,color=Method),
-       data=m[m$outgroup ==TRUE,])+
-  scale_y_continuous(trans="identity",name=expression("Est." - "true length (bias)"))+
-  scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T),name="True gene tree discordance (ILS)")+
-  #stat_summary(position = position_dodge(width=0.9),size=0.8,fun.data = mean_sdl)+
+
+### abs
+ggplot(aes(color=Method, y=abserr,x=as.factor(Calibrations),shape=isconcat),
+       data=merge(
+         dcast(data=m,
+               outgroup+Method+replicate+Calibrations+Branch.Type+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean),
+         dcast(data=m, outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+  scale_y_continuous(trans="identity",name="Mean absolute error")+
+  facet_grid(outgroup~cut(AD,4))+
+  scale_x_discrete(name="Number of Calibrations")+
   stat_summary()+
   stat_summary(aes(group=Method),geom="line")+
-  scale_x_discrete(name="True gene tree discordance (ILS)")+
-  facet_wrap(~Calibrations,ncol=2)+
-  theme_bw()+
-  theme(legend.position =  "bottom", legend.direction = "horizontal",
-       # axis.title.x = element_blank(),
-        axis.text.x = element_text(angle=0))+
   scale_color_brewer(palette = "Paired",name="")+
-  geom_hline(color="grey50",linetype=1,yintercept = 0)+
-  guides(color=guide_legend(nrow=2, byrow=TRUE),
-         fill=guide_legend(nrow=2, byrow=TRUE))
-ggsave("MV-bias_dating_ILS_broken_normalized-pro.pdf",width=10,height = 5)
-
+  theme_classic()+
+  theme(legend.position =  "none", legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE))
+ggsave("MV-abserr_dating_bycalib_line-pro-outgroup.pdf",width=6,height = 2.5)
 
 ggplot(aes(color=Method, y=abserr,x=as.factor(Calibrations),shape=isconcat),
        data=merge(
@@ -893,62 +887,21 @@ ggplot(aes(color=Method, y=abserr,x=as.factor(Calibrations),shape=isconcat),
   stat_summary(aes(group=Method),geom="line")+
   scale_color_brewer(palette = "Paired",name="")+
   theme_classic()+
-  theme(legend.position =  c(0.5,0.85), legend.direction = "horizontal",
-        legend.box.margin = margin(0), legend.margin = margin(0),
-        axis.text.x = element_text(angle=0))+
-  guides(color=guide_legend(nrow=2, byrow=TRUE),
-         fill=guide_legend(nrow=2, byrow=TRUE),
-         shape="none")
-ggsave("MV-abserr_dating_bycalib_line-pro_broken.pdf",width=9,height = 4)
-
-
-ggplot(aes(color=Method, y=sqrt(se),x=as.factor(Calibrations),shape=isconcat),
-       data=merge(
-         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)'),],
-               outgroup+Method+replicate+Calibrations+Branch.Type+isconcat~'se' ,value.var = "se",fun.aggregate = mean),
-         dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
-  scale_y_continuous(trans="identity",name="Root mean square error (RMSE)")+
-  facet_grid(Branch.Type~cut(AD,4))+
-  scale_x_discrete(name="Number of Calibrations")+
-  stat_summary()+
-  stat_summary(aes(group=Method),geom="line")+
-  scale_color_brewer(palette = "Paired",name="")+
-  #geom_hline(yintercept=0.6,linetype=2)+
-  theme_classic()+
   theme(legend.position =  "none", legend.direction = "horizontal",
         legend.box.margin = margin(0), legend.margin = margin(0),
         axis.text.x = element_text(angle=0))+
   guides(color=guide_legend(nrow=2, byrow=TRUE),
          fill=guide_legend(nrow=2, byrow=TRUE),
          shape="none")
-ggsave("MV-rmse_dating_bycalib_line-pro_broken.pdf",width=9,height = 4)
+ggsave("MV-abserr_dating_bycalib_line-pro_broken.pdf",width=6,height = 3.5)
 
 ggplot(aes(color=Method, y=abserr,x=as.factor(Calibrations),shape=isconcat),
        data=merge(
-         dcast(data=m,
-               outgroup+Method+replicate+Calibrations+Branch.Type+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean),
-         dcast(data=m, outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
-  scale_y_continuous(trans="identity",name="Mean absolute error")+
-  facet_grid(outgroup~cut(AD,4))+
-  scale_x_discrete(name="Number of Calibrations")+
-  stat_summary()+
-  stat_summary(aes(group=Method),geom="line")+
-  scale_color_brewer(palette = "Paired",name="")+
-  theme_classic()+
-  theme(legend.position =  "none", legend.direction = "horizontal",
-        legend.box.margin = margin(0), legend.margin = margin(0),
-        axis.text.x = element_text(angle=0))+
-  guides(color=guide_legend(nrow=3, byrow=TRUE),
-         fill=guide_legend(nrow=3, byrow=TRUE))
-ggsave("MV-abserr_dating_bycalib_line-pro-outgroup.pdf",width=6,height = 2.5)
-
-ggplot(aes(color=Method, y=sqrt(se),x=as.factor(Calibrations),shape=isconcat),
-       data=merge(
-         dcast(data=m[m$outgroup ==TRUE,],
-               outgroup+Method+replicate+Calibrations+Branch.Type+isconcat~'se' ,value.var = "se",fun.aggregate = mean),
+         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)'),],
+               outgroup+Method+replicate+Calibrations+Branch.Type+isconcat+ratevar~'abserr' ,value.var = "abserr",fun.aggregate = mean),
          dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
-  scale_y_continuous(trans="identity",name="Root mean square error (RMSE)")+
-  facet_wrap(~cut(AD,4),ncol=4)+
+  scale_y_continuous(trans="identity",name="Mean absolute error")+
+  facet_grid(Branch.Type~ratevar,labeller = labeller(ratevar = ratevar.labs))+
   scale_x_discrete(name="Number of Calibrations")+
   stat_summary()+
   stat_summary(aes(group=Method),geom="line")+
@@ -957,9 +910,10 @@ ggplot(aes(color=Method, y=sqrt(se),x=as.factor(Calibrations),shape=isconcat),
   theme(legend.position =  "none", legend.direction = "horizontal",
         legend.box.margin = margin(0), legend.margin = margin(0),
         axis.text.x = element_text(angle=0))+
-  guides(color=guide_legend(nrow=3, byrow=TRUE),
-         fill=guide_legend(nrow=3, byrow=TRUE))
-ggsave("MV-rmse_dating_bycalib_line-pro.pdf",width=6,height = 2.5)
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE),
+         shape="none")
+ggsave("MV-abserr_ratevar_dating_bycalib_line-pro_broken.pdf",width=4.5,height = 3.5)
 
 
 ggplot(aes(color=Method, y=abserr,x=as.factor(Calibrations),shape=isconcat),
@@ -982,6 +936,7 @@ ggplot(aes(color=Method, y=abserr,x=as.factor(Calibrations),shape=isconcat),
          shape='none')
 ggsave("MV-abserr_ratevar-dating_bycalib_line-pro.pdf",width=4.5,height = 2.5)
 
+
 dtemp=merge(
   dcast(data=m[m$outgroup ==TRUE,],
         outgroup+Method+replicate+Calibrations+Branch.Type+ratevar+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean),
@@ -989,7 +944,6 @@ dtemp=merge(
 dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
 dtemp %>% group_by(Calibrations,ratevar,isconcat,datingMethod) %>%
   summarise(abserr = mean(abserr)) %>% pivot_wider(names_from = isconcat,values_from = abserr) %>%
-
   ggplot(aes(color=datingMethod))+
   scale_y_continuous(trans="identity",name="Mean absolute error")+
   facet_wrap(~ratevar,ncol=4,labeller = as_labeller(c('0.15'='High','1.5'='Medium','5'='Low')))+
@@ -1008,6 +962,7 @@ dtemp %>% group_by(Calibrations,ratevar,isconcat,datingMethod) %>%
          shape='none')
 ggsave("MV-abserr_ratevar-dating_bycalib_line-pro_arrow.pdf",width=4.5,height = 2.5)
 
+
 dtemp=merge(
   dcast(data=m[m$outgroup ==TRUE,],
         outgroup+Method+replicate+Calibrations+Branch.Type+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean),
@@ -1015,8 +970,7 @@ dtemp=merge(
 dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
 dtemp %>% group_by(Calibrations,AD,isconcat,datingMethod) %>%
   summarise(abserr = mean(abserr)) %>% pivot_wider(names_from = isconcat,values_from = abserr) %>%
-  
-ggplot(aes(color=datingMethod))+
+  ggplot(aes(color=datingMethod))+
   scale_y_continuous(trans="identity",name="Mean absolute error")+
   facet_wrap(~cut(AD,4),ncol=4)+
   scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "5"))+
@@ -1034,6 +988,26 @@ ggplot(aes(color=datingMethod))+
          shape='none')
 ggsave("MV-abserr-dating_bycalib_line-pro_arrow.pdf",width=6,height = 2.5)
 
+### RMSE
+
+ggplot(aes(color=Method, y=sqrt(se),x=as.factor(Calibrations),shape=isconcat),
+       data=merge(
+         dcast(data=m[m$outgroup ==TRUE,],
+               outgroup+Method+replicate+Calibrations+Branch.Type+isconcat~'se' ,value.var = "se",fun.aggregate = mean),
+         dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+  scale_y_continuous(trans="identity",name="Root mean square error (RMSE)")+
+  facet_wrap(~cut(AD,4),ncol=4)+
+  scale_x_discrete(name="Number of Calibrations")+
+  stat_summary()+
+  stat_summary(aes(group=Method),geom="line")+
+  scale_color_brewer(palette = "Paired",name="")+
+  theme_classic()+
+  theme(legend.position =  "none", legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE))
+ggsave("MV-rmse_dating_bycalib_line-pro.pdf",width=6,height = 2.5)
 
 ggplot(aes(color=Method, y=sqrt(se),x=as.factor(Calibrations),shape=isconcat),
        data=merge(
@@ -1054,6 +1028,47 @@ ggplot(aes(color=Method, y=sqrt(se),x=as.factor(Calibrations),shape=isconcat),
          fill=guide_legend(nrow=3, byrow=TRUE),
          shape='none')
 ggsave("MV-rmse_ratevar-dating_bycalib_line-pro.pdf",width=4.5,height = 2.5)
+
+ggplot(aes(color=Method, y=sqrt(se),x=as.factor(Calibrations),shape=isconcat),
+       data=merge(
+         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)'),],
+               outgroup+Method+replicate+Calibrations+Branch.Type+isconcat~'se' ,value.var = "se",fun.aggregate = mean),
+         dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+  scale_y_continuous(trans="identity",name="Root mean square error (RMSE)")+
+  facet_grid(Branch.Type~cut(AD,4))+
+  scale_x_discrete(name="Number of Calibrations")+
+  stat_summary()+
+  stat_summary(aes(group=Method),geom="line")+
+  scale_color_brewer(palette = "Paired",name="")+
+  theme_classic()+
+  theme(legend.position =  "none", legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE),
+         shape="none")
+ggsave("MV-rmse_dating_bycalib_line-pro_broken.pdf",width=6,height = 3.5)
+
+ggplot(aes(color=Method, y=sqrt(se),x=as.factor(Calibrations),shape=isconcat),
+       data=merge(
+         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)'),],
+               outgroup+Method+replicate+Calibrations+Branch.Type+isconcat+ratevar~'se' ,value.var = "se",fun.aggregate = mean),
+         dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+  scale_y_continuous(trans="identity",name="Root mean square error (RMSE)")+
+  facet_grid(Branch.Type~ratevar,labeller = labeller(ratevar = ratevar.labs))+
+  scale_x_discrete(name="Number of Calibrations")+
+  stat_summary()+
+  stat_summary(aes(group=Method),geom="line")+
+  scale_color_brewer(palette = "Paired",name="")+
+  theme_classic()+
+  theme(legend.position =  "none", legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE), shape="none")
+ggsave("MV-rmse_ratevar_dating_bycalib_line-pro_broken.pdf",width=4.5,height = 3.5)
+
+### LOGERROR
 
 ggplot(aes(color=Method, y=log10err,x=as.factor(Calibrations),shape=isconcat),
        data=merge(
@@ -1093,54 +1108,8 @@ ggplot(aes(color=Method, y=log10err,x=as.factor(Calibrations),shape=isconcat),
          fill=guide_legend(nrow=3, byrow=TRUE))
 ggsave("MV-log10err_dating_bycalib_line-pro.pdf",width=6,height = 2.5)
 
-ggplot(aes(color=Method, y=abserr,x=Calibrations),
-       data=merge(
-         dcast(data=m[m$outgroup ==FALSE,],
-               outgroup+Method+replicate+Calibrations~'abserr' ,value.var = "abserr",fun.aggregate = mean),
-         dcast(data=m[m$outgroup ==FALSE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
-  scale_y_continuous(trans="identity",name="Mean absolute error")+
-  #facet_wrap(~outgroup,ncol=2,labeller = label_both)+
-  facet_wrap(~cut(AD,4))+
-  scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T),name="True gene tree discordance (ILS)")+
-  geom_boxplot(outlier.alpha = 0.3,width=0.8,outlier.size = 0.8)+
-  stat_summary(position = position_dodge(width=0.8))+
-  #geom_boxplot(outlier.size = 0)+
-  scale_color_manual(values=c("black","grey50"),name="",labels=c("With outgroup","No outgroup"))+
-  scale_shape(name="",labels=c("With outgroup","No outgroup"))+
-  scale_color_brewer(palette = "Paired",name="")+
-  theme_bw()+
-  theme(legend.position =  "bottom", legend.direction = "horizontal",
-        legend.box.margin = margin(0), legend.margin = margin(0),
-        axis.text.x = element_text(angle=0,size=11))+
-  guides(color=guide_legend(nrow=2, byrow=TRUE),
-         fill=guide_legend(nrow=2, byrow=TRUE))
-ggsave("MV-abserr-perrep-ILS-bymethod_dating_calib_normalized_bycalib.pdf",width=12,height = 4.5)
 
-
-ggplot(aes(color=Method, y=abserr,x=cut(AD,4)),
-       data=merge(
-         dcast(data=m[m$outgroup ==FALSE,],
-               outgroup+Method+replicate+Calibrations~'abserr' ,value.var = "abserr",fun.aggregate = mean),
-         dcast(data=m[m$outgroup ==FALSE,], outgroup+replicate+Calibrations~'AD' ,value.var = "AD",fun.aggregate = mean)))+
-  scale_y_continuous(trans="identity",name="Mean absolute error")+
-  #facet_wrap(~outgroup,ncol=2,labeller = label_both)+
-  scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T),name="True gene tree discordance (ILS)")+
-  #geom_boxplot(outlier.alpha = 0.3,width=0.8,outlier.size = 0.8)+
-  facet_wrap(~Calibrations)+
-  stat_summary()+
-  stat_summary(aes(group=Method),geom="line")+
-  #geom_boxplot(outlier.size = 0)+
-  scale_color_manual(values=c("black","grey50"),name="",labels=c("With outgroup","No outgroup"))+
-  scale_shape(name="",labels=c("With outgroup","No outgroup"))+
-  scale_color_brewer(palette = "Paired",name="")+
-  theme_bw()+
-  theme(legend.position =  "bottom", legend.direction = "horizontal",
-        legend.box.margin = margin(0), legend.margin = margin(0),
-        axis.text.x = element_text(angle=0,size=8))+
-  guides(color=guide_legend(nrow=2, byrow=TRUE),
-         fill=guide_legend(nrow=2, byrow=TRUE))
-ggsave("MV-abserr-ILS-line.pdf",width=10,height = 4)
-
+### MCMCtree figures
 
 m = read.csv('mvroot_estgt_dating_n5_normalized_castlespro.csv')
 m$Calibrations <- 3
@@ -1160,51 +1129,62 @@ m$se = (m$l.est - m$l.true)^2
 
 ggplot(aes(color=Method, y=abserr,x=cut(AD,c(0,0.25,0.5,0.75,1))),
        data=merge(
+         dcast(data=m[m$outgroup ==TRUE & m$Calibrations==5 & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),],
+               outgroup+Method+replicate+Branch.Type+ratevar~'abserr' ,value.var = "abserr",fun.aggregate = mean),
+         dcast(data=m[m$outgroup ==TRUE & m$Calibrations==5 & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+  scale_y_continuous(trans="identity",name="Mean absolute error")+
+  scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T),name="True gene tree discordance (ILS)")+
+  stat_summary()+
+  facet_grid(~Branch.Type)+
+  stat_summary(aes(group=Method),geom="line")+
+  scale_color_manual(values=c("#FB9A99","#E31A1C", "#6A3D9A"), name="")+
+  theme_classic()+
+  theme(legend.position ='none', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        legend.text = element_text(angle=15,size=8),
+        axis.text.x = element_text(angle=15,size=8))+
+  guides(color=guide_legend(nrow=4, byrow=TRUE),
+         fill=guide_legend(nrow=4, byrow=TRUE))
+ggsave("MV-abserr-ILS-line-no-outgroup_broken.pdf",width=4.5,height = 2.5)
+
+ggplot(aes(color=Method, y=abserr,x=cut(AD,c(0,0.25,0.5,0.75,1)),shape=isconcat),
+       data=merge(
+         dcast(data=m[m$outgroup ==TRUE & m$Calibrations==5 & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),],
+               outgroup+Method+replicate+Branch.Type+ratevar+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean),
+         dcast(data=m[m$outgroup ==TRUE & m$Calibrations==5 & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+  scale_y_continuous(trans="identity",name="Mean absolute error")+
+  scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T),name="True gene tree discordance (ILS)")+
+  stat_summary()+
+  facet_wrap(~ratevar,ncol=4,labeller = as_labeller(c('0.15'='High','1.5'='Medium','5'='Low')))+
+  stat_summary(aes(group=Method),geom="line")+
+  scale_color_manual(values=c("#FB9A99","#E31A1C", "#6A3D9A"), name="")+
+  theme_classic()+
+  theme(legend.position ="none", legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        legend.text = element_text(angle=15,size=8),
+        axis.text.x = element_text(angle=15,size=8))+
+  guides(color=guide_legend(nrow=4, byrow=TRUE),
+         fill=guide_legend(nrow=4, byrow=TRUE))
+ggsave("MV-abserr-ratevar-ILS-line-no-outgroup.pdf",width=6.5,height = 2.5)
+
+ggplot(aes(color=Method, y=abserr,x=as.factor(Calibrations)),
+       data=merge(
          dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),],
-               outgroup+Method+replicate+Branch.Type~'abserr' ,value.var = "abserr",fun.aggregate = mean),
+               outgroup+Method+replicate+Branch.Type+ratevar+Calibrations~'abserr' ,value.var = "abserr",fun.aggregate = mean),
          dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
   scale_y_continuous(trans="identity",name="Mean absolute error")+
-  #facet_wrap(~outgroup,ncol=2,labeller = label_both)+
-  scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T),name="True gene tree discordance (ILS)")+
-  #geom_boxplot(outlier.alpha = 0.3,width=0.8,outlier.size = 0.8)+
-  #facet_wrap(~ratevar)+
+  scale_x_discrete(name="Number of Calibrations",labels=c('0', '3', '5'))+
   stat_summary()+
-  facet_wrap(~Branch.Type)+
+  facet_grid(ratevar~cut(AD,4))+
   stat_summary(aes(group=Method),geom="line")+
-  #geom_boxplot(outlier.size = 0)+
-  scale_color_manual(values=c("black","grey50"),name="",labels=c("With outgroup","No outgroup"))+
-  scale_shape(name="",labels=c("With outgroup","No outgroup"))+
+  
   scale_color_brewer(palette = "Dark2",name="")+
   theme_classic()+
-  theme(legend.position =c(0.25,0.72), legend.direction = "horizontal",
-        legend.box.margin = margin(0), legend.margin = margin(0),
-        legend.text = element_text(angle=0,size=8),
-        axis.text.x = element_text(angle=0,size=8))+
+  theme(legend.position ='right', legend.direction = "horizontal",
+        legend.box.margin = margin(0))+
   guides(color=guide_legend(nrow=4, byrow=TRUE),
          fill=guide_legend(nrow=4, byrow=TRUE))
 ggsave("MV-abserr-ILS-line-no-outgroup.pdf",width=5,height = 3)
 
-ggplot(aes(x=cut(AD,c(0,0.25,0.5,0.75,1)), y=l.est-l.true,color=Method),
-       data=m[m$outgroup ==TRUE,])+
-  scale_y_continuous(trans="identity",name=expression("Est." - "true length (bias)"))+
-  scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T),name="True gene tree discordance (ILS)")+
-  #stat_summary(position = position_dodge(width=0.9),size=0.8,fun.data = mean_sdl)+
-  stat_summary()+
-  stat_summary(aes(group=Method),geom="line")+
-  scale_x_discrete(name="True gene tree discordance (ILS)")+
-  facet_wrap(~Branch.Type)+
-  #geom_boxplot(outlier.size = 0)+
-  #scale_color_manual(values=c("black","grey50"),name="",labels=c("With outgroup","No outgroup"))+
-  #scale_shape(name="",labels=c("With outgroup","No outgroup"))+
-  #scale_color_brewer(palette = 1,labels=c("High","Med","Low"),name="Clock deviation",direction = -1)+
-  theme_classic()+
-  theme(legend.position =  c(0.3,0.7), legend.direction = "horizontal",
-        # axis.title.x = element_blank(),
-        axis.text.x = element_text(angle=0))+
-  scale_color_brewer(palette = "Dark2",name="")+
-  geom_hline(color="grey50",linetype=1,yintercept = 0)+
-  guides(color=guide_legend(nrow=4, byrow=TRUE),
-         fill=guide_legend(nrow=4, byrow=TRUE))
-ggsave("MV-bias_dating_ILS_no_outgroup.pdf",width=5.5,height = 3)
 
 
