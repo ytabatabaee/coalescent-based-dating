@@ -1,6 +1,22 @@
 require(ggplot2);require(reshape2);require(scales);require(ggpubr);require(tidyr);require(ggpattern);library(stringr);library(dplyr)
 library(tidyr)
 
+df=read.csv('genera_mdcat_castlespro_concat.csv')
+df2 <- df %>% spread(method,age)
+
+ggplot(aes(x=age,y=genera,color=method),data=df)+
+  geom_point()+
+  scale_color_brewer(palette = "Dark2",name=element_blank())+
+  geom_segment(data = df2, aes(y=as.numeric(factor(genera)),yend=as.numeric(factor(genera)),x=`MD-CAT+CASTLES-Pro`,xend=`MD-CAT+Concat(RAxML)`), 
+               colour = "#7C8385", 
+               arrow = arrow(length = unit(6,'pt')))+
+  theme_classic()+
+  theme(legend.position = 'bottom')+ 
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE),
+         legend.title=element_blank())
+ggsave("mdcat_median_genera.pdf",width=3,height = 5)
+
 
 corr=read.csv('mdcat_median_castles_caml_corr.csv')
 
