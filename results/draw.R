@@ -115,6 +115,37 @@ ggplot(aes(x=Condition, y=l.true/l.est,color=Method,shape=isconcat),data=s[s$Out
 ggsave("S100-tmrca-bias_dating_calib_root-unfixed.pdf",width=7,height = 3)
 
 
+### TREENESS for root-unfixed
+## TMRCA for root-unfixed, S100
+s=read.csv('s100_dating_treeness.csv')
+s$Method = factor(s$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)'))
+s$Condition =  factor(s$Condition) 
+levels(s$Condition) = list("200bp" = "fasttree_genetrees_200_non", 
+                           "400bp" = "fasttree_genetrees_400_non", 
+                           "800bp" = "fasttree_genetrees_800_non",
+                           "1600bp" = "fasttree_genetrees_1600_non",
+                           "true gene trees" = "truegenetrees")
+s$isconcat = factor(grepl("Concat", s$Method))
+s$log10err = log10(s$l.est / s$l.true )
+s$abserr = abs(s$l.true - s$l.est)
+s$se = (s$l.est - s$l.true)^2 
+
+ggplot(aes(x=Condition, y=l.true/l.est,color=Method,shape=isconcat),data=s[s$Outgroup=='False',])+
+  scale_y_continuous(trans="identity",name=expression("True / estimated treeness"))+
+  scale_x_discrete(name="Sequence length")+
+  facet_grid(~Calibrations)+
+  geom_boxplot(outlier.alpha = 0.3,width=0.8,outlier.size = 0.8)+
+  stat_summary(position = position_dodge(width=0.8))+
+  theme_classic()+
+  theme(legend.position =  "none", legend.direction = "horizontal",
+        axis.text.x = element_text(angle=0))+
+  scale_color_brewer(palette = "Paired",name="")+
+  geom_hline(color="grey50",linetype=1,yintercept = 1)+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE))
+ggsave("S100-treeness_dating_root-unfixed.pdf",width=7,height = 3)
+
+
 s0=read.csv('s100_dating_unit.no_OG_castles_pro.csv')
 s3=read.csv('s100_dating_normalized_n3.no_OG_castles_pro.csv')
 s10=read.csv('s100_dating_normalized_n10.no_OG_castles_pro.csv')
@@ -592,9 +623,12 @@ ggplot(aes(x=Condition,y=sqrt(se),color=Method),
 ggsave("S100-rmse-perrep_dating.pdf",width=7,height = 5)
 
 
+## MVROOT dataset
+
+### TMRCA
+
 m=read.csv('mvroot_estgt_dating_tmrca.csv')
 m$outgroup = factor(grepl("outgroup.0", m$Condition))
-#m$Method = factor(m$Method, levels=c('LSD+CASTLES', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES', 'TreePL+Concat(RAxML)'))#, 'MCMCtree'))
 m$Method = factor(m$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'test', 'MCMCtree'))
 m$ratevar = factor(sub(".genes.*","",sub("outgroup.*.species.","",m$Condition)))
 m$isconcat = factor(grepl("Concat", m$Method))
@@ -674,6 +708,86 @@ ggplot(aes(x=ratevar, y=(l.true)/l.est,color=Method,shape=isconcat), data=m)+
          shape="none")
 ggsave("MV-tmrca_dating_calib_ratevar.pdf",width=8,height = 4.5)
 
+### TREENESS
+
+m=read.csv('mvroot_estgt_dating_treeness.csv')
+m$outgroup = factor(grepl("outgroup.0", m$Condition))
+m$Method = factor(m$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'test', 'MCMCtree'))
+m$ratevar = factor(sub(".genes.*","",sub("outgroup.*.species.","",m$Condition)))
+m$isconcat = factor(grepl("Concat", m$Method))
+m$log10err = log10(m$l.est / m$l.true )
+m$abserr = abs(m$l.true - m$l.est)
+m$se = (m$l.est - m$l.true)^2 
+outgroup.labs <- c("With outgroup","No outgroup")
+names(outgroup.labs) <- c(TRUE, FALSE)
+
+ggplot(aes(x=ratevar, y=(l.true)/l.est,color=Method,shape=isconcat),
+       data=m[m$outgroup ==FALSE & m$Calibrations==3,])+
+  scale_y_continuous(trans="identity",name=expression("True / estimated treeness"))+
+  scale_x_discrete(labels=c("High","Medium","Low"),name="Clock deviation")+
+  #facet_wrap(~Calibrations)+
+  geom_boxplot(outlier.alpha = 0.3,width=0.8,outlier.size = 0.8)+
+  stat_summary(position = position_dodge(width=0.8))+
+  theme_classic()+
+  theme(legend.position =  "none", legend.direction = "horizontal",
+        axis.text.x = element_text(angle=0))+
+  scale_color_brewer(palette = "Paired",name="")+
+  geom_hline(color="grey50",linetype=1,yintercept = 1)+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE))
+ggsave("MV-treeness-dating_ratevar.pdf",width=4,height = 3)
+
+
+ggplot(aes(x=cut(AD,4), y=(l.true)/l.est,color=Method,shape=isconcat),
+       data=m[m$outgroup ==FALSE & m$Calibrations==3,])+
+  scale_y_continuous(trans="identity",name=expression("True / estimated treeness"))+
+  scale_x_discrete(name="True gene tree discordance (ILS)")+
+  #facet_wrap(~Calibrations)+
+  coord_cartesian(ylim=c(0,3))+
+  geom_boxplot(outlier.alpha = 0.3,width=0.8,outlier.size = 0.8)+
+  stat_summary(position = position_dodge(width=0.8))+
+  theme_classic()+
+  theme(legend.position =  "none", legend.direction = "horizontal",
+        axis.text.x = element_text(angle=0))+
+  scale_color_brewer(palette = "Paired",name="")+
+  geom_hline(color="grey50",linetype=1,yintercept = 1)+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE))
+ggsave("MV-treeness_dating.pdf",width=5,height = 3)
+
+ggplot(aes(x=cut(AD,4), y=(l.true)/l.est,color=Method,shape=isconcat), data=m)+
+  scale_y_continuous(trans="identity",name=expression("True / estimated treeness"))+
+  scale_x_discrete(name="True gene tree discordance (ILS)")+
+  facet_grid(outgroup~Calibrations, labeller = labeller(outgroup = outgroup.labs))+
+  geom_boxplot(outlier.alpha = 0.3,width=0.8,outlier.size = 0.8)+
+  stat_summary(position = position_dodge(width=0.8))+
+  theme_classic()+
+  theme(legend.position = "bottom", legend.direction = "horizontal",
+        axis.text.x = element_text(angle=0))+
+  scale_color_brewer(palette = "Paired",name="")+
+  geom_hline(color="grey50",linetype=1,yintercept = 1)+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         shape="none")
+ggsave("MV-treeness_dating_calib.pdf",width=8,height = 6.2)
+
+ggplot(aes(x=ratevar, y=(l.true)/l.est,color=Method,shape=isconcat), data=m)+
+  scale_y_continuous(trans="identity",name=expression("True / estimated treeness"))+
+  scale_x_discrete(labels=c("High","Medium","Low"),name="Clock deviation")+
+  facet_grid(outgroup~Calibrations, labeller = labeller(outgroup = outgroup.labs))+
+  geom_boxplot(outlier.alpha = 0.3,width=0.8,outlier.size = 0.8)+
+  stat_summary(position = position_dodge(width=0.8))+
+  theme_classic()+
+  theme(legend.position = "none", legend.direction = "horizontal",
+        axis.text.x = element_text(angle=0))+
+  scale_color_brewer(palette = "Paired",name="")+
+  geom_hline(color="grey50",linetype=1,yintercept = 1)+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         shape="none")
+ggsave("MV-treeness_dating_calib_ratevar.pdf",width=8,height = 4.5)
+
+### BRANCH LENGTH
 
 m0 = read.csv('mvroot_estgt_dating_castlespro.csv')
 m3 = read.csv('mvroot_estgt_dating_n3_normalized_castlespro.csv')
@@ -683,42 +797,19 @@ m3$Calibrations <- 3
 m5$Calibrations <- 5
 m <- rbind(m0,m3,m5)
 m$outgroup = factor(grepl("outgroup.0", m$Condition))
-#m = m[m$Method!="MCMCtree",]
+m = m[m$Method!="MCMCtree",]
 #m$Method = factor(m$Method, levels=c('LSD+CASTLES', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES', 'TreePL+Concat(RAxML)'))#, 'MCMCtree'))
 m$Method = factor(m$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'))
 m$ratevar = factor(sub(".genes.*","",sub("outgroup.*.species.","",m$Condition)))
 m$isconcat = factor(grepl("Concat", m$Method))
 
 ### Comment out to include negative branch lengths.
-m$l.est = ifelse(m$l.est <=0, 1e-6, m$l.est)
+m$l.est = ifelse(m$l.est <=0, 1e-3, m$l.est)
 m$log10err = log10(m$l.est / m$l.true )
 m$abserr = abs(m$l.true - m$l.est)
 m$se = (m$l.est - m$l.true)^2 
 ratevar.labs <- c("Low","Medium", "High")
 names(ratevar.labs) <- c("5","1.5", "0.15")
-
-
-
-ggplot(aes(color=Method, y=log10err,x=as.factor(Calibrations),shape=isconcat),
-       data=merge(
-         dcast(data=m[m$outgroup ==TRUE,],
-               outgroup+Method+replicate+Calibrations+Branch.Type+isconcat~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x))),
-         dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
-  scale_y_continuous(trans="identity",name="Mean log error")+
-  facet_grid(Branch.Type~cut(AD,4))+
-  scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T),name="True gene tree discordance (ILS)")+
-  stat_summary()+
-  stat_summary(aes(group=Method),geom="line")+
-  scale_color_manual(values=c("black","grey50"),name="",labels=c("With outgroup","No outgroup"))+
-  scale_shape(name="",labels=c("With outgroup","No outgroup"))+
-  scale_color_brewer(palette = "Paired",name="")+
-  theme_classic()+
-  theme(legend.position =  "none", legend.direction = "horizontal",
-        legend.box.margin = margin(0), legend.margin = margin(0),
-        axis.text.x = element_text(angle=0,size=11))+
-  guides(color=guide_legend(nrow=2, byrow=TRUE),
-         fill=guide_legend(nrow=2, byrow=TRUE))
-ggsave("MV-logerr-perrep-ILS-bymethod_dating_calib_normalized_bycalib.pdf",width=9,height = 4)
 
 
 ggplot(aes(x=cut(AD,5), y=l.est-l.true,color=Method),
@@ -1107,6 +1198,48 @@ ggplot(aes(color=Method, y=log10err,x=as.factor(Calibrations),shape=isconcat),
   guides(color=guide_legend(nrow=3, byrow=TRUE),
          fill=guide_legend(nrow=3, byrow=TRUE))
 ggsave("MV-log10err_dating_bycalib_line-pro.pdf",width=6,height = 2.5)
+
+ggplot(aes(color=Method, y=log10err,x=as.factor(Calibrations),shape=isconcat),
+       data=merge(
+         dcast(data=m[m$outgroup ==TRUE,],
+               outgroup+Method+replicate+Calibrations+Branch.Type+isconcat~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x))),
+         dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+  scale_y_continuous(trans="identity",name="Mean log error")+
+  facet_grid(Branch.Type~cut(AD,4))+
+  scale_x_discrete(name="Number of Calibrations")+
+  stat_summary()+
+  stat_summary(aes(group=Method),geom="line")+
+  scale_color_manual(values=c("black","grey50"),name="",labels=c("With outgroup","No outgroup"))+
+  scale_shape(name="",labels=c("With outgroup","No outgroup"))+
+  scale_color_brewer(palette = "Paired",name="")+
+  theme_classic()+
+  theme(legend.position =  "none", legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0,size=11))+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE))
+ggsave("MV-log10err_dating_bycalib_line-pro_broken.pdf",width=6,height = 3.5)
+
+ggplot(aes(color=Method, y=log10err,x=as.factor(Calibrations),shape=isconcat),
+       data=merge(
+         dcast(data=m[m$outgroup ==TRUE,],
+               outgroup+Method+replicate+Calibrations+Branch.Type+isconcat+ratevar~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x))),
+         dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+  scale_y_continuous(trans="identity",name="Mean log error")+
+  facet_grid(Branch.Type~ratevar,labeller = labeller(ratevar = ratevar.labs))+
+  scale_x_discrete(name="Number of Calibrations")+
+  stat_summary()+
+  stat_summary(aes(group=Method),geom="line")+
+  scale_color_manual(values=c("black","grey50"),name="",labels=c("With outgroup","No outgroup"))+
+  scale_shape(name="",labels=c("With outgroup","No outgroup"))+
+  scale_color_brewer(palette = "Paired",name="")+
+  theme_classic()+
+  theme(legend.position =  "none", legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0,size=11))+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE))
+ggsave("MV-ratevar-log10err_dating_bycalib_line-pro_broken.pdf",width=4.5,height = 3.5)
 
 
 ### MCMCtree figures
