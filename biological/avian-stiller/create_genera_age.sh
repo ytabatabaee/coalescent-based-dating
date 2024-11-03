@@ -1,0 +1,1 @@
+paste <(t=mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre; while read x; do nw_distance -ml $t `cat labels|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq ) <(t=mdcat_median_40Kl_caml_stiller.rooted.tre; while read x; do nw_distance -ml $t `cat labels|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq)|column -t
