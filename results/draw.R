@@ -1038,14 +1038,21 @@ ggsave("S100-rmse-perrep_dating.pdf",width=7,height = 5)
 m=read.csv('mvroot_estgt_dating_tmrca.csv')
 m$outgroup = factor(grepl("outgroup.1", m$Condition))
 m$Method = factor(m$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'test', 'MCMCtree'))
+m = m[m$Method!="MCMCtree",]
 m$ratevar = factor(sub(".genes.*","",sub("outgroup.*.species.","",m$Condition)))
 m$isconcat = factor(grepl("Concat", m$Method))
 m$log10err = log10(m$l.est / m$l.true )
 m$abserr = abs(m$l.true - m$l.est)
+m$ratio = m$l.true/m$l.est
 m$se = (m$l.est - m$l.true)^2 
 outgroup.labs <- c("With outgroup","No outgroup")
 names(outgroup.labs) <- c(TRUE, FALSE)
-
+m <- m |> mutate(conditionAD = case_when(
+  AD >= 0 & AD < 0.25 ~ '[0,0.25)',
+  AD >= 0.25 & AD <= 0.5 ~ '[0.25,0.5)',
+  AD >= 0.5 & AD <= 0.75 ~ '[0.5,0.75)',
+  AD >= 0.75 & AD <= 1 ~ '[0.75,1)',
+))
 
 ggplot(aes(x=ratevar, y=l.est/l.true,color=Method,shape=isconcat),
        data=m[m$outgroup ==FALSE & m$Calibrations==3,])+
@@ -1081,6 +1088,33 @@ ggplot(aes(x=cut(AD,4), y=(l.true/l.est),color=Method,shape=isconcat),
   guides(color=guide_legend(nrow=2, byrow=TRUE),
          fill=guide_legend(nrow=2, byrow=TRUE))
 ggsave("MV-tmrca_dating.pdf",width=5,height = 3)
+
+dtemp=merge(
+  dcast(data=m[m$outgroup ==FALSE,],
+        outgroup+Method+replicate+Calibrations+isconcat+conditionAD~'ratio' ,value.var = "ratio",fun.aggregate = mean),
+  dcast(data=m[m$outgroup ==FALSE,], replicate+outgroup~'AD' ,value.var = "AD",fun.aggregate = mean)) 
+dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
+dtemp %>% group_by(Calibrations,conditionAD,isconcat,datingMethod,outgroup) %>%
+  summarise(ratio = mean(ratio)) %>% pivot_wider(names_from = isconcat,values_from = ratio) %>%
+  ggplot(aes(color=datingMethod))+
+  scale_y_continuous(trans="identity",name="True / estimated tMRCA")+
+  facet_grid(~conditionAD)+#,labeller = labeller(outgroup = outgroup.labs))+
+  geom_hline(color="grey50",linetype=1,yintercept = 1)+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2),label = c("3", "5"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-4)/8,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-4)/8),
+               arrow = arrow(length = unit(4,'pt')))+
+  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C", "#6A3D9A"), name="")+
+  theme_classic()+
+  theme(legend.position =  'none', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0),
+        theme(legend.text=element_text(size=15)))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         shape='none')
+ggsave("MV-tmrca-arrow.pdf",width=5,height = 2.5)
 
 ggplot(aes(x=cut(AD,4), y=(l.true)/l.est,color=Method,shape=isconcat), data=m)+
   scale_y_continuous(trans="identity",name=expression("True / estimated tMRCA"))+
@@ -1126,6 +1160,8 @@ m$isconcat = factor(grepl("Concat", m$Method))
 m$log10err = log10(m$l.est / m$l.true )
 m$abserr = abs(m$l.true - m$l.est)
 m$bias = m$l.est - m$l.true
+m = m[m$Method!="MCMCtree",]
+m$ratio = m$l.true/m$l.est
 m$se = (m$l.est - m$l.true)^2 
 outgroup.labs <- c("With outgroup","No outgroup")
 names(outgroup.labs) <- c(TRUE, FALSE)
@@ -1135,6 +1171,33 @@ m <- m |> mutate(conditionAD = case_when(
   AD >= 0.5 & AD <= 0.75 ~ '[0.5,0.75)',
   AD >= 0.75 & AD <= 1 ~ '[0.75,1)',
 ))
+
+dtemp=merge(
+  dcast(data=m[m$outgroup ==FALSE,],
+        outgroup+Method+replicate+Calibrations+isconcat+conditionAD~'ratio' ,value.var = "ratio",fun.aggregate = mean),
+  dcast(data=m[m$outgroup ==FALSE,], replicate+outgroup~'AD' ,value.var = "AD",fun.aggregate = mean)) 
+dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
+dtemp %>% group_by(Calibrations,conditionAD,isconcat,datingMethod,outgroup) %>%
+  summarise(ratio = mean(ratio)) %>% pivot_wider(names_from = isconcat,values_from = ratio) %>%
+  ggplot(aes(color=datingMethod))+
+  scale_y_continuous(trans="identity",name="True / estimated treeness")+
+  facet_grid(~conditionAD)+#,labeller = labeller(outgroup = outgroup.labs))+
+  geom_hline(color="grey50",linetype=1,yintercept = 1)+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2),label = c("3", "5"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-4)/8,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-4)/8),
+               arrow = arrow(length = unit(4,'pt')))+
+  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C", "#6A3D9A"), name="")+
+  theme_classic()+
+  theme(legend.position =  'none', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0),
+        theme(legend.text=element_text(size=15)))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         shape='none')
+ggsave("MV-treeness-arrow.pdf",width=5,height = 2.5)
 
 ggplot(aes(x=ratevar, y=(l.est)/l.true,color=Method,shape=isconcat),
        data=m[m$outgroup ==FALSE & m$Calibrations==3,])+
@@ -1151,6 +1214,23 @@ ggplot(aes(x=ratevar, y=(l.est)/l.true,color=Method,shape=isconcat),
   guides(color=guide_legend(nrow=2, byrow=TRUE),
          fill=guide_legend(nrow=2, byrow=TRUE))
 ggsave("MV-treeness-dating_ratevar.pdf",width=4,height = 3)
+
+ggplot(aes(x=conditionAD, y=l.true/l.est,color=Method,shape=isconcat),
+       data=m[m$outgroup ==FALSE & m$Calibrations==3,])+
+  scale_y_continuous(trans="identity",name=expression("True / estimated treeness"))+
+  scale_x_discrete(name="True gene tree discordance (ILS)")+
+  #facet_wrap(~Calibrations)+
+  #coord_cartesian(ylim=c(0,3))+
+  geom_boxplot(outlier.alpha = 0.3,width=0.8,outlier.size = 0.8)+
+  stat_summary(position = position_dodge(width=0.8))+
+  theme_classic()+
+  theme(legend.position =  "none", legend.direction = "horizontal",
+        axis.text.x = element_text(angle=0))+
+  scale_color_brewer(palette = "Paired",name="")+
+  geom_hline(color="grey50",linetype=1,yintercept = 1)+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE))
+ggsave("MV-treeness_dating_main.pdf",width=5,height = 3)
 
 
 ggplot(aes(x=conditionAD, y=l.est-l.true,color=Method,shape=isconcat),
