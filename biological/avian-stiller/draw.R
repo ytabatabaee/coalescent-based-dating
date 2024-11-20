@@ -5,9 +5,22 @@ df=read.csv('genera_mdcat_castlespro_concat.csv')
 df2 <- df %>% spread(method,age)
 
 ggplot(aes(x=age,y=genera,color=method),data=df)+
-  geom_point()+
+  geom_point(size=2)+
+  geom_segment(data = df2, aes(y=as.numeric(factor(genera)),yend=as.numeric(factor(genera)),xend=`MD-CAT+CASTLES-Pro`,x=`MD-CAT+Concat(RAxML)`), 
+               colour = "#7C8385", 
+               arrow = arrow(length = unit(6,'pt')))+
+  theme_bw()+
+  scale_color_manual(values=c("#6A3D9A", "#FB9A99","#E31A1C"), name="")+
+  theme(legend.position = 'none')+ 
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         legend.title=element_blank())
+ggsave("mdcat_median_genera.pdf",width=3,height = 5.5)
+
+ggplot(aes(x=age,y=genera,color=method),data=df[df$method!='MD-CAT+Concat(RAxML)',])+
+  geom_point(size=2)+
   scale_color_brewer(palette = "Dark2",name=element_blank())+
-  geom_segment(data = df2, aes(y=as.numeric(factor(genera)),yend=as.numeric(factor(genera)),x=`MD-CAT+CASTLES-Pro`,xend=`MD-CAT+Concat(RAxML)`), 
+  geom_segment(data = df2, aes(y=as.numeric(factor(genera)),yend=as.numeric(factor(genera)),xend=`MD-CAT+CASTLES-Pro`,x=`MCMCtree`), 
                colour = "#7C8385", 
                arrow = arrow(length = unit(6,'pt')))+
   theme_classic()+
@@ -15,15 +28,48 @@ ggplot(aes(x=age,y=genera,color=method),data=df)+
   guides(color=guide_legend(nrow=2, byrow=TRUE),
          fill=guide_legend(nrow=2, byrow=TRUE),
          legend.title=element_blank())
-ggsave("mdcat_median_genera.pdf",width=3,height = 5)
+ggsave("mcmctree_genera.pdf",width=3,height = 5.5)
+
+
+df=read.csv('families_mdcat_castlespro_concat.csv')
+df2 <- df %>% spread(method,age)
+
+ggplot(aes(x=age,y=family,color=method),data=df)+
+  geom_point(size=2)+
+  geom_segment(data = df2, aes(y=as.numeric(factor(family)),yend=as.numeric(factor(family)),xend=`MD-CAT+CASTLES-Pro`,x=`MD-CAT+Concat(RAxML)`), 
+               colour = "#7C8385", 
+               arrow = arrow(length = unit(6,'pt')))+
+  theme_bw()+
+  scale_color_manual(values=c("#6A3D9A", "#FB9A99","#E31A1C"), name="")+
+  theme(legend.position = 'none')+ 
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         legend.title=element_blank())
+ggsave("mdcat_median_families.pdf",width=3.1,height = 5.5)
+
+df=read.csv('orders_mdcat_castlespro_concat.csv')
+df2 <- df %>% spread(method,age)
+
+ggplot(aes(x=age,y=order,color=method),data=df)+
+  geom_point(size=2)+
+  geom_segment(data = df2, aes(y=as.numeric(factor(order)),yend=as.numeric(factor(order)),xend=`MD-CAT+CASTLES-Pro`,x=`MD-CAT+Concat(RAxML)`), 
+               colour = "#7C8385", 
+               arrow = arrow(length = unit(6,'pt')))+
+  theme_bw()+
+  scale_color_manual(values=c("#6A3D9A", "#FB9A99","#E31A1C"), name="")+
+  theme(legend.position = 'none')+ 
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         legend.title=element_blank())
+ggsave("mdcat_median_orders.pdf",width=3,height = 5.5)
+
 
 corr=read.csv('castles_caml_corr.csv')
 
-
 ggplot(aes(x=l1,y=l2,color=Branch.Type),data=corr)+
   geom_point(alpha=0.6)+
-  scale_x_continuous(trans="log10",name="CASTLES-Pro length")+
-  scale_y_continuous(trans="log10",name="CAML length")+
+  scale_x_continuous(trans="log10",name="Branch length (CASTLES-Pro)")+
+  scale_y_continuous(trans="log10",name="Branch length (CAML)")+
   facet_wrap(~Method,ncol=4)+
   stat_smooth(se=F,method="glm",formula=y ~ poly(x, 2))+
   scale_color_brewer(palette = "Dark2")+
@@ -33,6 +79,22 @@ ggplot(aes(x=l1,y=l2,color=Branch.Type),data=corr)+
   theme(legend.position = c(.3,.25)) + 
   guides(colour = guide_legend(override.aes = list(alpha = 1)))
 ggsave("median_corr_r.pdf",width=9.5,height = 3.5)
+
+corr=read.csv('node_age_corr.csv')
+
+ggplot(aes(x=l1,y=l2,color=Node.Type),data=corr)+
+  geom_point(alpha=0.6)+
+  scale_x_continuous(trans="log10",name="Node age (CASTLES-Pro)")+
+  scale_y_continuous(trans="log10",name="Node age (CAML)")+
+  facet_wrap(~Method,ncol=4)+
+  stat_smooth(se=F,method="glm",formula=y ~ poly(x, 2))+
+  scale_color_brewer(palette = "Dark2")+
+  geom_abline(color="black",linetype=2)+
+  coord_cartesian(xlim=c(10^-2,100),ylim=c(10^-2,100))+
+  theme_classic()+
+  theme(legend.position = 'none') + 
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+ggsave("node_age_corr.pdf",width=9.5,height = 3.5)
 
 
 
