@@ -37,16 +37,18 @@ corr=read.csv('treepl_castles_caml_corr.csv')
 a=read.csv('Species_name_map_uids.csv')
 a$tipnamecodes <- gsub('_',' ',a$tipnamecodes)
 corr_per_family=(merge(corr,a[,c(3,9)],by.x="Taxon",by.y="tipnamecodes"))
+corr_per_family=corr_per_family[!is.na(corr_per_family$howardmoore.family),]
 
 ggplot(corr_per_family[corr_per_family$Branch.Type=='terminal',], aes(x=howardmoore.family, y=1/as.numeric(l1.l2), fill=howardmoore.family)) + 
   #geom_violin(draw_quantiles = c(0.25, 0.5, 0.75))+
   geom_boxplot(outlier.alpha = 0.3,width=0.86)+
+  stat_summary(position = position_dodge(width=0.86))+
   #scale_fill_brewer(palette = clad,name="",direction = -1)+
   scale_color_brewer(palette = "Spectral",name="")+
   scale_y_continuous(name="Branch length ratio" )+
   facet_wrap(~Topology,ncol=1)+
   geom_hline(yintercept=1, linetype="dashed", color = "grey40")+
-  coord_cartesian(ylim=c(0,15))+
+  coord_cartesian(ylim=c(0,25))+
   theme_classic()+
   theme(legend.position = 'bottom', 
         legend.title = element_blank(),
@@ -56,4 +58,74 @@ ggplot(corr_per_family[corr_per_family$Branch.Type=='terminal',], aes(x=howardmo
   guides(color=guide_legend(ncol=3, byrow=TRUE),
          linetype=guide_legend(ncol=3, byrow=TRUE))
 ggsave("subsocines_ratio_family.pdf",width=8.5,height=8.5)
+
+df=read.csv('treeness.csv')
+df$comb = paste(df$Topology,df$Method)
+
+ggplot(data=df, aes(x=Method, y=Treeness, fill=comb)) +
+  facet_wrap(~Topology,ncol=3)+
+  geom_bar(stat="identity",colour="black")+
+  scale_fill_manual(values=c("#A6CEE3", "#1F78B4", "#B2DF8A", "#33A02C","red")) +
+  scale_x_discrete(name="Branch length")+
+  coord_cartesian(ylim=c(0,0.48))+
+  geom_text(aes(label=Treeness), vjust=-0.3, size=3.5)+
+  theme_classic()+
+  theme(legend.position = "none")+
+  guides(color=guide_legend(ncol=3, byrow=TRUE),
+         linetype=guide_legend(ncol=3, byrow=TRUE))
+ggsave("subsocines_treeness.pdf",width=5,height=2.5)
+
+
+df=read.csv('genera_treepl_castlespro_concat.csv')
+df2 <- df %>% spread(method,age)
+
+ggplot(aes(x=age,y=genus,color=method),data=df)+
+  geom_point(size=2.5)+
+  geom_segment(data = df2, aes(y=as.numeric(factor(genus)),yend=as.numeric(factor(genus)),xend=`TreePL+CASTLES-Pro`,x=`TreePL+Concat(RAxML)`), 
+               colour = "#7C8385", 
+               arrow = arrow(length = unit(6,'pt')))+
+  theme_bw()+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00"), name="")+
+  theme(legend.position = 'none')+ 
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         legend.title=element_blank())
+ggsave("suboscines_genera.pdf",width=3.7,height = 6.5)
+
+df=read.csv('families_treepl_castlespro_concat.csv')
+df2 <- df %>% spread(method,age)
+
+ggplot(aes(x=age,y=family,color=method),data=df)+
+  geom_point(size=2.5)+
+  geom_segment(data = df2, aes(y=as.numeric(factor(family)),yend=as.numeric(factor(family)),xend=`TreePL+CASTLES-Pro`,x=`TreePL+Concat(RAxML)`), 
+               colour = "#7C8385", 
+               arrow = arrow(length = unit(6,'pt')))+
+  theme_bw()+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00"), name="")+
+  theme(legend.position = 'none')+ 
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         legend.title=element_blank())
+ggsave("suboscines_family.pdf",width=3.7,height = 6.5)
+
+ggplot(aes(x=age,y=family,color=method),data=df)+
+  geom_point(size=2.5)+
+  geom_segment(data = df2, aes(y=as.numeric(factor(family)),yend=as.numeric(factor(family)),xend=`TreePL+CASTLES-Pro`,x=`TreePL+Concat(RAxML)`), 
+               colour = "#7C8385", 
+               arrow = arrow(length = unit(6,'pt')))+
+  theme_bw()+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00"), name="")+
+  theme(legend.position = 'bottom')+ 
+  guides(color=guide_legend(nrow=1, byrow=TRUE),
+         fill=guide_legend(nrow=1, byrow=TRUE),
+         legend.title=element_blank())
+ggsave("legend_treepl.pdf",width=5,height = 6.5)
+
+
+
+# lineage-through-time plots
+library(phytools)
+
+tree <- read.tree(file="./treepl_concat_T400F.examl.rooted.tre")
+
 

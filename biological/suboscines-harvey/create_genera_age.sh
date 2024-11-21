@@ -1,0 +1,1 @@
+paste <(t=treepl_castles_T400F.examl.rooted.tre; while read x; do nw_distance -ml $t `cat labels.txt|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq ) <(t=treepl_castles_T400F.examl.rooted.tre; while read x; do nw_distance -ml $t `cat labels.txt|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq)|column -t
