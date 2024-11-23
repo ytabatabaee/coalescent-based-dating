@@ -4,9 +4,9 @@ library(tidyr)
 df=read.csv('genera_mdcat_castlespro_concat.csv')
 df2 <- df %>% spread(method,age)
 
-ggplot(aes(x=age,y=genera,color=method),data=df)+
+ggplot(aes(x=age,y=genus,color=method),data=df)+
   geom_point(size=2)+
-  geom_segment(data = df2, aes(y=as.numeric(factor(genera)),yend=as.numeric(factor(genera)),xend=`MD-CAT+CASTLES-Pro`,x=`MD-CAT+Concat(RAxML)`), 
+  geom_segment(data = df2, aes(y=as.numeric(factor(genus)),yend=as.numeric(factor(genus)),xend=`MD-CAT+CASTLES-Pro`,x=`MD-CAT+Concat(RAxML)`), 
                colour = "#7C8385", 
                arrow = arrow(length = unit(6,'pt')))+
   theme_bw()+
@@ -124,18 +124,20 @@ corr_per_family=(merge(corr,a[,c(1,3,4,5,8)],by.x="Taxon",by.y="taxa"))
 ggplot(corr_per_family[corr_per_family$Branch.Type=='terminal',], aes(x=clade_mag7, y=1/as.numeric(l1.l2), fill=clade_mag7)) + 
   #geom_violin(draw_quantiles = c(0.25, 0.5, 0.75))+
   geom_boxplot(outlier.alpha = 0.3,width=0.86)+
+  stat_summary(position = position_dodge(width=0.86))+
   #scale_fill_brewer(palette = clad,name="",direction = -1)+
   #scale_color_brewer(palette = "Spectral",name="")+
   scale_color_manual(name = "", values = unique(corr_per_family$clade_mag7), labels = unique(corr_per_family$clade_mag7)) +
   scale_y_continuous(name="Branch length ratio" )+
   geom_hline(yintercept=1, linetype="dashed", color = "grey40")+
-  coord_cartesian(ylim=c(0,2))+
+  coord_cartesian(ylim=c(0,3.8))+
   theme_classic()+
   theme(legend.position = 'bottom', 
         legend.title = element_blank(),
         axis.text.x = element_blank(),
         axis.title.x = element_blank())+
   scale_x_discrete(name="", labels = "")+
+  #annotate(geom="text",label="a)", x = 1, y = 3.1, size = 6, width=2)+
   guides(color=guide_legend(ncol=3, byrow=TRUE),
          linetype=guide_legend(ncol=3, byrow=TRUE))
 ggsave("corr_violin_higher_clade.pdf",width=6,height=4)
@@ -144,6 +146,7 @@ newd <-  corr_per_family %>% group_by(order) %>% filter(n()>2)
 ggplot(newd[newd$Branch.Type=='terminal',], aes(x=order, y=1/as.numeric(l1.l2), fill=order)) + 
   #geom_violin(draw_quantiles = c(0.25, 0.5, 0.75))+
   geom_boxplot(outlier.alpha = 0.3,width=0.86)+
+  stat_summary(position = position_dodge(width=0.86))+
   #scale_fill_brewer(palette = clad,name="",direction = -1)+
   scale_color_brewer(palette = "Spectral",name="")+
   #scale_color_manual(name = "", values = unique(corr_per_family$order), labels = unique(corr_per_family$order)) +
@@ -164,12 +167,13 @@ newd <-  corr_per_family %>% group_by(family) %>% filter(n()>2)
 ggplot(newd[newd$Branch.Type=='terminal',], aes(x=family, y=1/as.numeric(l1.l2), fill=family)) + 
   #geom_violin(draw_quantiles = c(0.25, 0.5, 0.75))+
   geom_boxplot(outlier.alpha = 0.3,width=0.86)+
+  stat_summary(position = position_dodge(width=0.86))+
   #scale_fill_brewer(palette = clad,name="",direction = -1)+
   scale_color_brewer(palette = "Spectral",name="")+
   #scale_color_manual(name = "", values = unique(corr_per_family$order), labels = unique(corr_per_family$order)) +
   scale_y_continuous(name="Branch length ratio" )+
   geom_hline(yintercept=1, linetype="dashed", color = "grey40")+
-  coord_cartesian(ylim=c(0,8))+
+  #coord_cartesian(ylim=c(0,8))+
   theme_classic()+
   theme(legend.position = 'bottom', 
         legend.title = element_blank(),
@@ -179,3 +183,5 @@ ggplot(newd[newd$Branch.Type=='terminal',], aes(x=family, y=1/as.numeric(l1.l2),
   guides(color=guide_legend(ncol=3, byrow=TRUE),
          linetype=guide_legend(ncol=3, byrow=TRUE))
 ggsave("corr_violin_family.pdf",width=9,height=7)
+
+

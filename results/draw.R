@@ -2,6 +2,103 @@ require(ggplot2);require(reshape2);require(scales);require(ggpubr);require(tidyr
 
 ## S100 dataset
 
+## time and memory
+t=read.csv('s100_time_n3_treepl.csv')
+t$Condition =  factor(t$Condition) 
+levels(t$Condition) = list("200bp" = "fasttree_genetrees_200_non", 
+                           "400bp" = "fasttree_genetrees_400_non", 
+                           "800bp" = "fasttree_genetrees_800_non",
+                           "1600bp" = "fasttree_genetrees_1600_non",
+                           "true gene trees" = "truegenetrees")
+t$genes =  factor(t$genes)
+
+ggplot(aes(x=genes,y=time_s/60,color=Method,group=Method),
+       data=t)+
+  stat_summary(geom="line")+
+  stat_summary()+
+  facet_wrap(~Condition,ncol=4)+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00"), name="")+
+  scale_y_continuous(trans="log10",name="Running time (minutes)" )+
+  theme_classic()+
+  theme(legend.position = "none", legend.direction = "horizontal",)+
+  scale_x_discrete(name="Number of genes")+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         linetype=guide_legend(nrow=2, byrow=TRUE))
+ggsave("treepl-time.pdf",width=8,height=2.5)
+
+ggplot(aes(x=genes,y=mem_gb,color=Method,group=Method),
+       data=t)+
+  stat_summary(geom="line")+
+  stat_summary()+
+  facet_wrap(~Condition,ncol=4)+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00"), name="")+
+  scale_y_continuous(trans="log10",name="Peak memory usage (GB)" )+
+  theme_classic()+
+  theme(legend.position = "none", legend.direction = "horizontal",
+        axis.text.x = element_text(angle=0),
+        legend.box.margin = margin(0), legend.margin = margin(0))+
+  scale_x_discrete(name="Number of genes")+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         linetype=guide_legend(nrow=2, byrow=TRUE))
+ggsave("treepl-mem.pdf",width=8,height =2.5)
+
+
+t=read.csv('s100_time_n3_treepl_steps.csv')
+t$Condition =  factor(t$Condition) 
+levels(t$Condition) = list("200bp" = "fasttree_genetrees_200_non", 
+                           "400bp" = "fasttree_genetrees_400_non", 
+                           "800bp" = "fasttree_genetrees_800_non",
+                           "1600bp" = "fasttree_genetrees_1600_non",
+                           "true gene trees" = "truegenetrees")
+t$Step=factor(t$Step,levels=c("Dating", "Branch length estimation"))
+t$genes =  factor(t$genes)
+
+ggplot(aes(x=genes,y=time_s/60,fill=Step),
+       data=t)+
+  #stat_summary(geom="line")+
+  #stat_summary()+
+  geom_bar(stat = "summary", fun.y = "mean")+
+  facet_grid(Method~Condition)+
+  scale_fill_manual(values=c("#5F9EA0", "#E1B378"))+
+  scale_y_continuous(name="Running time (minutes)" )+
+  theme_classic()+
+  theme(legend.position = "none", legend.direction = "horizontal",)+
+  scale_x_discrete(name="Number of genes")+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         linetype=guide_legend(nrow=2, byrow=TRUE))
+ggsave("treepl-time_broken.pdf",width=6,height=4)
+
+ggplot(aes(x=genes,y=mem_gb,fill=Step),
+       data=t)+
+  geom_bar(stat = "summary", fun.y = "mean")+
+  facet_grid(Method~Condition)+
+  scale_fill_manual(values=c("#5F9EA0", "#E1B378"))+
+  scale_y_continuous(name="Peak memory usage (GB)" )+
+  theme_classic()+
+  theme(legend.position = "none", legend.direction = "horizontal",
+        axis.text.x = element_text(angle=0),
+        legend.box.margin = margin(0), legend.margin = margin(0))+
+  scale_x_discrete(name="Number of genes")+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         linetype=guide_legend(nrow=2, byrow=TRUE))
+ggsave("treepl-mem_broken.pdf",width=6,height =4)
+
+ggplot(aes(x=genes,y=time_s/60,fill=Step),
+       data=t)+
+  #stat_summary(geom="line")+
+  #stat_summary()+
+  geom_bar(stat = "summary", fun.y = "mean")+
+  facet_grid(Method~Condition)+
+  scale_fill_manual(values=c("#5F9EA0", "#E1B378"))+
+  scale_y_continuous(name="Running time (minutes)" )+
+  theme_classic()+
+  theme(legend.position = "bottom", legend.direction = "horizontal",)+
+  scale_x_discrete(name="Number of genes")+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         linetype=guide_legend(nrow=2, byrow=TRUE))
+ggsave("legend_steps.pdf",width=6,height=4)
+
+
 ### node age
 s0=read.csv('s100_dating_unit_node_age.csv')
 s3=read.csv('s100_dating_normalized_n3_node_age.csv')
@@ -217,6 +314,28 @@ dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod) %>%
          fill=guide_legend(nrow=3, byrow=TRUE),shape='none')
 ggsave("S100-dating_error-logerror_node_age_arrow.pdf",width=5,height = 2.5)
 
+dtemp=dcast(data=s[s$Condition=='800bp',],
+            conditionAD+Method+replicate+Calibrations+isconcat~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x)))
+dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
+dtemp %>% group_by(conditionAD,Calibrations,isconcat,datingMethod) %>%
+  summarise(log10err = mean(log10err)) %>% pivot_wider(names_from = isconcat,values_from = log10err) %>%
+  ggplot(aes(color=datingMethod))+
+  scale_y_continuous(trans="identity",name="Mean log10 error\n(node age)")+
+  facet_wrap(~Calibrations,ncol=4)+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(conditionAD)))+(as.numeric(factor(datingMethod))-2)/8,
+                   xend=(as.numeric(factor(conditionAD)))+(as.numeric(factor(datingMethod))-2)/8),
+               arrow = arrow(length = unit(5,'pt')))+
+  scale_x_continuous(name="True gene tree discordance (ILS)",breaks = c(1, 2, 3),label = c("[0.3,0.4)", "[0.4,0.5)", "[0.5,0.6)"))+
+  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  theme_classic()+
+  theme(legend.position =  'none', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),shape='none')
+ggsave("S100-dating_error-logerror_node_age_arrow_main.pdf",width=6,height = 2.5)
+
 
 ## TMRCA for root-unfixed, S100
 s=read.csv('s100_dating_tmrca.csv')
@@ -231,6 +350,31 @@ s$isconcat = factor(grepl("Concat", s$Method))
 s$log10err = log10(s$l.est / s$l.true )
 s$abserr = abs(s$l.true - s$l.est)
 s$se = (s$l.est - s$l.true)^2 
+s$ratio = s$l.true/s$l.est
+
+dtemp=dcast(data=s,
+            Condition+Method+replicate+Calibrations+isconcat~'ratio' ,value.var = "ratio",fun.aggregate = mean)
+dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
+dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod) %>%
+  summarise(ratio = mean(ratio)) %>% pivot_wider(names_from = isconcat,values_from = ratio) %>%
+  ggplot(aes(color=datingMethod))+
+  scale_y_continuous(trans="identity",name="True / estimated tMRCA")+
+  facet_wrap(~Condition,ncol=4)+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2),label = c("3", "10"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2)/8,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2)/8),
+               arrow = arrow(length = unit(5,'pt')))+
+  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  theme_classic()+
+  geom_hline(color="grey50",linetype=1,yintercept = 1)+
+  theme(legend.position =  'none', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE), shape='none')
+ggsave("S100-tmrca-arrow.pdf",width=4.5,height = 2.5)
+
 
 ggplot(aes(x=Condition, y=l.true/l.est,color=Method,shape=isconcat),data=s[s$Outgroup=='True'&s$Calibrations==3,])+
   scale_y_continuous(trans="identity",name=expression("True / estimated tMRCA"))+
@@ -403,7 +547,7 @@ dtemp %>% group_by(Condition,genes,isconcat,datingMethod) %>%
         axis.text.x = element_text(angle=0))+
   guides(color=guide_legend(nrow=3, byrow=TRUE),
          fill=guide_legend(nrow=3, byrow=TRUE),shape='none')
-ggsave("S100-abserr_dating_genes_n3-genes_arrow_main.pdf",width=7,height = 2.5)
+ggsave("S100-abserr_dating_genes_n3-genes_arrow.pdf",width=6,height = 2.5)
 
 
 dtemp=dcast(data=s,
@@ -544,6 +688,96 @@ s <- s |> mutate(conditionAD = case_when(
 ))
 
 
+dtemp=dcast(data=s,
+            Condition+Method+replicate+Calibrations+Branch.Type+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean)
+dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
+dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod) %>%
+  summarise(abserr = mean(abserr)) %>% pivot_wider(names_from = isconcat,values_from = abserr) %>%
+  ggplot(aes(color=datingMethod))+
+  scale_y_continuous(trans="identity",name="Mean absolute error")+
+  facet_wrap(~Condition,ncol=4)+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "10"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2)/8,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2)/8),
+               arrow = arrow(length = unit(5,'pt')))+
+  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  theme_classic()+
+  theme(legend.position =  'none', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE), shape='none')
+ggsave("S100_abserr-dating_calib_pro-arrow.pdf",width=5,height = 2.5)
+
+
+dtemp=dcast(data=s,
+            Condition+Method+replicate+Calibrations+Branch.Type+isconcat~'se' ,value.var = "se",fun.aggregate = mean)
+dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
+dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod) %>%
+  summarise(rmse = mean(sqrt(se))) %>% pivot_wider(names_from = isconcat,values_from = rmse) %>%
+  ggplot(aes(color=datingMethod))+
+  scale_y_continuous(trans="identity",name="Root mean square error (RMSE)")+
+  facet_wrap(~Condition,ncol=4)+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "10"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2)/8,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2)/8),
+               arrow = arrow(length = unit(5,'pt')))+
+  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  theme_classic()+
+  theme(legend.position =  'none', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE), shape='none')
+ggsave("S100_rmse-dating_calib_pro-arrow.pdf",width=5,height = 2.5)
+
+dtemp=dcast(data=s,
+            Condition+Method+replicate+Calibrations+isconcat~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x)))
+dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
+dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod) %>%
+  summarise(log10err = mean(log10err)) %>% pivot_wider(names_from = isconcat,values_from = log10err) %>%
+  ggplot(aes(color=datingMethod))+
+  scale_y_continuous(trans="identity",name="Mean log10 error")+
+  facet_wrap(~Condition,ncol=4)+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2)/8,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2)/8),
+               arrow = arrow(length = unit(5,'pt')))+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "10"))+
+  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  theme_classic()+
+  theme(legend.position =  'none', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),shape='none')
+ggsave("S100-dating_error-logerror_arrow.pdf",width=5,height = 2.5)
+
+dtemp=dcast(data=s,
+            Condition+Method+replicate+Calibrations+Branch.Type+isconcat~'bias' ,value.var = "bias",fun.aggregate = mean)
+dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
+dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod) %>%
+  summarise(bias = mean(bias)) %>% pivot_wider(names_from = isconcat,values_from = bias) %>%
+  ggplot(aes(color=datingMethod))+
+  scale_y_continuous(trans="identity",name=expression("Estimated" - "true length (bias)"))+
+  facet_wrap(~Condition,ncol=4)+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "10"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2)/8,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2)/8),
+               arrow = arrow(length = unit(5,'pt')))+
+  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  theme_classic()+
+  geom_hline(color="grey50",linetype=1,yintercept = 0)+
+  theme(legend.position =  'none', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE), shape='none')
+ggsave("S100-bias_dating_calib_pro-arrow.pdf",width=5,height = 2.5)
+
 ggplot(data=dcast(data=s[s$Calibrations==3,],Condition+Method+replicate+isconcat~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x))), aes(x=Condition,y=log10err,color=Method,shape=isconcat))+
   scale_y_continuous(trans="identity",name="Mean log10 error\n(branch length)")+
   geom_boxplot(outlier.alpha = 0.3,width=0.86)+
@@ -594,7 +828,7 @@ ggplot(data=dcast(data=s,Condition+Method+replicate+Calibrations~'log10err' ,val
          fill=guide_legend(nrow=2, byrow=TRUE))+
   theme(legend.position = "none", legend.direction = "horizontal",
         axis.title.x = element_blank())
-ggsave("S100-dating_error-logabs-calib.pdf",width=6,height = 2.5)
+ggsave("S100-dating_error-logabs-calib.pdf",width=5,height = 2.5)
 
 
 ggplot(data=dcast(data=s[s$Condition=='800bp',],Condition+Method+replicate+Calibrations+conditionAD~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x))), aes(x=as.factor(Calibrations),y=log10err,color=Method))+
@@ -840,6 +1074,28 @@ dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod) %>%
          fill=guide_legend(nrow=3, byrow=TRUE), shape='none')
 ggsave("S100-bias_dating_calib-arrow_main.pdf",width=5,height = 2.5)
 
+dtemp=dcast(data=s[s$Condition=='800bp',],
+            conditionAD+Method+replicate+Calibrations+isconcat~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x)))
+dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
+dtemp %>% group_by(conditionAD,Calibrations,isconcat,datingMethod) %>%
+  summarise(log10err = mean(log10err)) %>% pivot_wider(names_from = isconcat,values_from = log10err) %>%
+  ggplot(aes(color=datingMethod))+
+  scale_y_continuous(trans="identity",name="Mean log10 error")+
+  facet_wrap(~Calibrations,ncol=4)+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(conditionAD)))+(as.numeric(factor(datingMethod))-2)/8,
+                   xend=(as.numeric(factor(conditionAD)))+(as.numeric(factor(datingMethod))-2)/8),
+               arrow = arrow(length = unit(5,'pt')))+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "10"))+
+  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  theme_classic()+
+  theme(legend.position =  'none', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),shape='none')
+ggsave("S100-dating_error-logerror_arrow_main.pdf",width=5,height = 2.5)
+
 ggplot(aes(x=as.factor(Calibrations),y=abserr,color=Method),
        data=dcast(data=s[s$Condition=='800bp',], conditionAD+Method+replicate+Branch.Type+Calibrations~'abserr' ,value.var = "abserr",fun.aggregate = mean))+
   scale_y_continuous(trans="identity",name="Mean absolute error")+
@@ -875,7 +1131,26 @@ ggplot(aes(x=as.factor(Calibrations),y=abserr,color=Method),
   guides(color=guide_legend(nrow=2, byrow=TRUE),
          fill=guide_legend(nrow=2, byrow=TRUE))
 #coord_cartesian(ylim=c(0,0.2),xlim=c(1,5),clip="off")
-ggsave("S100-error-perrep_dating_calib.pdf",width=6,height =2.5)
+ggsave("S100-error-perrep_dating_calib.pdf",width=5,height =2.5)
+
+ggplot(aes(x=as.factor(Calibrations),y=bias,color=Method),
+       data=dcast(data=s, Condition+Method+replicate+Branch.Type+Calibrations~'bias' ,value.var = "bias",fun.aggregate = mean))+
+  scale_y_continuous(trans="identity",name=expression("Estimated" - "true length (bias)"))+
+  facet_wrap(~Condition,ncol=4)+
+  #geom_boxplot(outlier.alpha = 0.3,width=0.86)+
+  #stat_summary(position = position_dodge(width=0.86))+
+  scale_x_discrete(name="Number of Calibrations",labels=c('0', '3', '10'))+
+  stat_summary()+
+  stat_summary(aes(group=Method),geom="line")+
+  geom_hline(color="grey50",linetype=1,yintercept = 0)+
+  scale_fill_brewer(palette = "Paired")+
+  scale_color_brewer(palette = "Paired",name="")+
+  theme_classic()+
+  theme(legend.position = 'none', legend.direction = "horizontal")+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE))
+#coord_cartesian(ylim=c(0,0.2),xlim=c(1,5),clip="off")
+ggsave("S100-bias-perrep_dating_calib.pdf",width=5,height =2.5)
 
 
 ggplot(aes(x=as.factor(Calibrations),y=sqrt(se),color=Method),
@@ -893,7 +1168,7 @@ ggplot(aes(x=as.factor(Calibrations),y=sqrt(se),color=Method),
   theme(legend.position = 'none', legend.direction = "horizontal")+
   guides(color=guide_legend(nrow=2, byrow=TRUE),
          fill=guide_legend(nrow=2, byrow=TRUE))
-ggsave("S100-rmse-perrep_dating_calib.pdf",width=6,height =2.5)
+ggsave("S100-rmse-perrep_dating_calib.pdf",width=5,height =2.5)
 
 ggplot(aes(x=as.factor(Calibrations),y=sqrt(se),color=Method),
        data=dcast(data=s[s$Condition=='800bp',], Condition+Method+replicate+Branch.Type+Calibrations+conditionAD~'se' ,value.var = "se",fun.aggregate = mean))+

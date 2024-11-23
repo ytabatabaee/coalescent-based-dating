@@ -122,10 +122,120 @@ ggplot(aes(x=age,y=family,color=method),data=df)+
 ggsave("legend_treepl.pdf",width=5,height = 6.5)
 
 
+df=read.csv('caml_ltt.csv')
+
+ggplot(df[df$time<62.042784,], aes(x =time,y=lineages,color=method)) +
+  geom_step(size=0.8) +
+  theme_classic()+
+  scale_x_continuous(name="Time (million years)")+
+  scale_y_continuous(name="Number of lineages",trans = 'log10')+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00"), name="")+
+  theme(legend.position = 'none')+ 
+  geom_vline(color="grey50",linetype=2,xintercept = 60)+
+  guides(color=guide_legend(nrow=1, byrow=TRUE),
+         fill=guide_legend(nrow=1, byrow=TRUE),
+         legend.title=element_blank())
+ggsave("caml_ltt_log.pdf",width=4,height = 3)
+
+ggplot(df[df$time<62.042784 & df$time>60,], aes(x =time,y=lineages,color=method)) +
+  geom_step(size=0.8) +
+  theme_classic()+
+  scale_x_continuous(name="Time (million years)")+
+  scale_y_continuous(name="Number of lineages",trans = 'log10')+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00"), name="")+
+  theme(legend.position = 'none')+ 
+  guides(color=guide_legend(nrow=1, byrow=TRUE),
+         fill=guide_legend(nrow=1, byrow=TRUE),
+         legend.title=element_blank())
+ggsave("caml_ltt_log_end.pdf",width=4,height = 3)
+
+df=read.csv('suboscines_ltt.csv')
+
+ggplot(df[df$time<64.6951439999999,], aes(x =time,y=lineages,color=method)) +
+  geom_step(size=0.8) +
+  theme_classic()+
+  facet_wrap(~factor(topology,c('CAML', 'ASTRAL', 'wASTRAL')))+
+  scale_x_continuous(name="Time (million years)")+
+  scale_y_continuous(name="Number of lineages",trans = 'log10')+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00"), name="")+
+  theme(legend.position = 'none')+ 
+  geom_vline(color="grey50",linetype=2,xintercept = 62)+
+  guides(color=guide_legend(nrow=1, byrow=TRUE),
+         fill=guide_legend(nrow=1, byrow=TRUE),
+         legend.title=element_blank())
+ggsave("stiller_ltt_log.pdf",width=9,height = 3)
+
+ggplot(df[df$time<64.6951439999999 & df$time>62,], aes(x =time,y=lineages,color=method)) +
+  geom_step(size=0.8) +
+  theme_classic()+
+  facet_wrap(~factor(topology,c('CAML', 'ASTRAL', 'wASTRAL')))+
+  scale_x_continuous(name="Time (million years)")+
+  scale_y_continuous(name="Number of lineages",trans = 'log10')+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00"), name="")+
+  theme(legend.position = 'none')+ 
+  geom_vline(color="grey50",linetype=2,xintercept = 62)+
+  guides(color=guide_legend(nrow=1, byrow=TRUE),
+         fill=guide_legend(nrow=1, byrow=TRUE),
+         legend.title=element_blank())
+ggsave("stiller_ltt_log_end.pdf",width=9,height = 3)
+
+ggplot(df[df$time<64.6951439999999,], aes(x=time,y=lineages,color=interaction(method,topology,sep='+')))+
+  geom_step(size=0.8)+
+  theme_classic()+
+  scale_x_continuous(name="Time (million years)")+
+  scale_y_continuous(name="Number of lineages",trans = 'log10')+
+  scale_color_brewer(palette = "Paired",name="")+
+  theme(legend.position = 'none')+ 
+  geom_vline(color="grey50",linetype=2,xintercept = 62)+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         legend.title=element_blank())
+ggsave("stiller_ltt_log_all.pdf",width=4,height = 3)
+
+ggplot(df[df$time<64.6951439999999 & df$time>62,], aes(x=time,y=lineages,color=interaction(method,topology,sep='+')))+
+  geom_step(size=0.8)+
+  theme_classic()+
+  scale_x_continuous(name="Time (million years)")+
+  scale_y_continuous(name="Number of lineages",trans = 'log10')+
+  scale_color_brewer(palette = "Paired",name="")+
+  theme(legend.position = 'none')+ 
+  geom_vline(color="grey50",linetype=2,xintercept = 62)+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         legend.title=element_blank())
+ggsave("stiller_ltt_log_all_end.pdf",width=4,height = 3)
+
+
+ggplot(df[df$time<64.6951439999999,], aes(x=time,y=lineages,color=interaction(method,topology,sep='+')))+
+  geom_step(size=0.8)+
+  theme_classic()+
+  scale_x_continuous(name="Time (million years)")+
+  scale_y_continuous(name="Number of lineages",trans = 'log10')+
+  scale_color_brewer(palette = "Paired",name="")+
+  theme(legend.position = 'bottom')+ 
+  geom_vline(color="grey50",linetype=2,xintercept = 62)+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         fill=guide_legend(nrow=2, byrow=TRUE),
+         legend.title=element_blank())
+ggsave("legend_stiller_5.pdf",width=8,height = 3)
 
 # lineage-through-time plots
 library(phytools)
 
-tree <- read.tree(file="./treepl_concat_T400F.examl.rooted.tre")
+tree1 <- read.tree(file="./treepl_castles_T400F.examl.rooted.tre")
+tree1<-force.ultrametric(tree1)
+
+tree2 <- read.tree(file="./treepl_concat_T400F.examl.rooted.tre")
+tree2<-force.ultrametric(tree2)
+
+is.ultrametric(tree1)
+is.ultrametric(tree2)
+
+trees <- c(tree1, tree2)
+trees<-lapply(trees,force.ultrametric)
+class(trees)<-"multiPhylo"
+ltt(trees,log=TRUE)#,xlim=c(60,65))
+
+#ltt(tree2,log=TRUE,plot=TRUE)#,xlim=c(60,65))
 
 
