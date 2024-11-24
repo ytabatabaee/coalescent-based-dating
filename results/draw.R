@@ -1312,7 +1312,7 @@ ggsave("S100-rmse-perrep_dating.pdf",width=7,height = 5)
 
 m=read.csv('mvroot_estgt_dating_tmrca.csv')
 m$outgroup = factor(grepl("outgroup.1", m$Condition))
-m$Method = factor(m$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'test', 'MCMCtree'))
+m$Method = factor(m$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'))
 m = m[m$Method!="MCMCtree",]
 m$ratevar = factor(sub(".genes.*","",sub("outgroup.*.species.","",m$Condition)))
 m$isconcat = factor(grepl("Concat", m$Method))
@@ -1401,7 +1401,8 @@ ggplot(aes(x=cut(AD,4), y=(l.true)/l.est,color=Method,shape=isconcat), data=m)+
   theme_classic()+
   theme(legend.position = "bottom", legend.direction = "horizontal",
         axis.text.x = element_text(angle=0))+
-  scale_color_brewer(palette = "Paired",name="")+
+  #scale_color_brewer(palette = "Paired",name="")+
+  scale_color_manual(values=c('#A6CEE3',"#1F78B4",'#B2DF8A',"#33A02C",'#FB9A99',"#E31A1C",'#FDBF6F',"#FF7F00","#6A3D9A"), name="")+
   geom_hline(color="grey50",linetype=1,yintercept = 1)+
   guides(color=guide_legend(nrow=3, byrow=TRUE),
          fill=guide_legend(nrow=3, byrow=TRUE),
@@ -1418,7 +1419,8 @@ ggplot(aes(x=ratevar, y=(l.true)/l.est,color=Method,shape=isconcat), data=m)+
   theme_classic()+
   theme(legend.position = "none", legend.direction = "horizontal",
         axis.text.x = element_text(angle=0))+
-  scale_color_brewer(palette = "Paired",name="")+
+  #scale_color_brewer(palette = "Paired",name="")+
+  scale_color_manual(values=c('#A6CEE3',"#1F78B4",'#B2DF8A',"#33A02C",'#FB9A99',"#E31A1C",'#FDBF6F',"#FF7F00","#6A3D9A"), name="")+
   geom_hline(color="grey50",linetype=1,yintercept = 1)+
   guides(color=guide_legend(nrow=3, byrow=TRUE),
          fill=guide_legend(nrow=3, byrow=TRUE),
@@ -1435,7 +1437,7 @@ m$isconcat = factor(grepl("Concat", m$Method))
 m$log10err = log10(m$l.est / m$l.true )
 m$abserr = abs(m$l.true - m$l.est)
 m$bias = m$l.est - m$l.true
-m = m[m$Method!="MCMCtree",]
+#m = m[m$Method!="MCMCtree",]
 m$ratio = m$l.true/m$l.est
 m$se = (m$l.est - m$l.true)^2 
 outgroup.labs <- c("With outgroup","No outgroup")
@@ -1534,7 +1536,8 @@ ggplot(aes(x=conditionAD, y=l.est-l.true,color=Method,shape=isconcat), data=m)+
   theme_classic()+
   theme(legend.position = "bottom", legend.direction = "horizontal",
         axis.text.x = element_text(angle=0))+
-  scale_color_brewer(palette = "Paired",name="")+
+  #scale_color_brewer(palette = "Paired",name="")+
+  scale_color_manual(values=c('#A6CEE3',"#1F78B4",'#B2DF8A',"#33A02C",'#FB9A99',"#E31A1C",'#FDBF6F',"#FF7F00","#6A3D9A"), name="")+
   geom_hline(color="grey50",linetype=1,yintercept = 0)+
   guides(color=guide_legend(nrow=3, byrow=TRUE),
          fill=guide_legend(nrow=3, byrow=TRUE),
@@ -1550,7 +1553,8 @@ ggplot(aes(x=ratevar, y=l.est-l.true,color=Method,shape=isconcat), data=m)+
   theme_classic()+
   theme(legend.position = "none", legend.direction = "horizontal",
         axis.text.x = element_text(angle=0))+
-  scale_color_brewer(palette = "Paired",name="")+
+  #scale_color_brewer(palette = "Paired",name="")+
+  scale_color_manual(values=c('#A6CEE3',"#1F78B4",'#B2DF8A',"#33A02C",'#FB9A99',"#E31A1C",'#FDBF6F',"#FF7F00","#6A3D9A"), name="")+
   geom_hline(color="grey50",linetype=1,yintercept = 0)+
   guides(color=guide_legend(nrow=3, byrow=TRUE),
          fill=guide_legend(nrow=3, byrow=TRUE),
@@ -2304,17 +2308,17 @@ m <- m |> mutate(conditionAD = case_when(
   AD >= 0.75 & AD <= 1 ~ '[0.75,1)',
 ))
 
-ggplot(aes(color=Method, y=abserr,x=cut(AD,c(0,0.25,0.5,0.75,1))),
+ggplot(aes(color=Method, shape=isconcat, y=abserr,x=cut(AD,c(0,0.25,0.5,0.75,1))),
        data=merge(
-         dcast(data=m[m$outgroup ==TRUE & m$Calibrations==5 & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),],
-               outgroup+Method+replicate+Branch.Type+ratevar~'abserr' ,value.var = "abserr",fun.aggregate = mean),
-         dcast(data=m[m$outgroup ==TRUE & m$Calibrations==5 & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+         dcast(data=m[m$outgroup ==TRUE & m$Calibrations==5 & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),],
+               outgroup+Method+replicate+Branch.Type+ratevar+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean),
+         dcast(data=m[m$outgroup ==TRUE & m$Calibrations==5 & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
   scale_y_continuous(trans="identity",name="Mean absolute error\n(branch length)")+
   scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T),name="True gene tree discordance (ILS)")+
   stat_summary()+
   facet_grid(~Branch.Type)+
   stat_summary(aes(group=Method),geom="line")+
-  scale_color_manual(values=c("#FB9A99","#E31A1C", "#6A3D9A"), name="")+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00", "#6A3D9A"), name="")+
   theme_classic()+
   theme(legend.position ='none', legend.direction = "horizontal",
         legend.box.margin = margin(0), legend.margin = margin(0),
@@ -2324,17 +2328,17 @@ ggplot(aes(color=Method, y=abserr,x=cut(AD,c(0,0.25,0.5,0.75,1))),
          fill=guide_legend(nrow=4, byrow=TRUE))
 ggsave("MV-abserr-ILS-line-no-outgroup_broken.pdf",width=4.5,height = 2.5)
 
-ggplot(aes(color=Method, y=abserr,x=cut(AD,c(0,0.25,0.5,0.75,1)),shape=isconcat),
+ggplot(aes(color=Method,  shape=isconcat,y=abserr,x=cut(AD,c(0,0.25,0.5,0.75,1)),shape=isconcat),
        data=merge(
-         dcast(data=m[m$outgroup ==TRUE & m$Calibrations==5 & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),],
+         dcast(data=m[m$outgroup ==TRUE & m$Calibrations==5 & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),],
                outgroup+Method+replicate+Branch.Type+ratevar+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean),
-         dcast(data=m[m$outgroup ==TRUE & m$Calibrations==5 & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+         dcast(data=m[m$outgroup ==TRUE & m$Calibrations==5 & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
   scale_y_continuous(trans="identity",name="Mean absolute error\n(branch length)")+
   scale_x_discrete(label=function(x) gsub("+","\n",x,fixed=T),name="True gene tree discordance (ILS)")+
   stat_summary()+
   facet_wrap(~ratevar,ncol=4,labeller = as_labeller(c('0.15'='High','1.5'='Medium','5'='Low')))+
   stat_summary(aes(group=Method),geom="line")+
-  scale_color_manual(values=c("#FB9A99","#E31A1C", "#6A3D9A"), name="")+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00", "#6A3D9A"), name="")+
   theme_classic()+
   theme(legend.position ="none", legend.direction = "horizontal",
         legend.box.margin = margin(0), legend.margin = margin(0),
@@ -2344,17 +2348,17 @@ ggplot(aes(color=Method, y=abserr,x=cut(AD,c(0,0.25,0.5,0.75,1)),shape=isconcat)
          fill=guide_legend(nrow=4, byrow=TRUE))
 ggsave("MV-abserr-ratevar-ILS-line-no-outgroup.pdf",width=6.5,height = 2.5)
 
-ggplot(aes(color=Method, y=abserr,x=as.factor(Calibrations)),
+ggplot(aes(color=Method, shape=isconcat, y=abserr,x=as.factor(Calibrations)),
        data=merge(
-         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),],
-               outgroup+Method+replicate+Branch.Type+ratevar+Calibrations+conditionAD~'abserr' ,value.var = "abserr",fun.aggregate = mean),
-         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),],
+               outgroup+Method+replicate+Branch.Type+ratevar+Calibrations+conditionAD+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean),
+         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
   scale_y_continuous(trans="identity",name="Mean absolute error\n(branch length)")+
   scale_x_discrete(name="Number of Calibrations",labels=c('0', '3', '5'))+
   stat_summary()+
   facet_grid(ratevar~conditionAD,,labeller = labeller(ratevar = ratevar.labs))+
   stat_summary(aes(group=Method),geom="line")+
-  scale_color_manual(values=c("#FB9A99","#E31A1C", "#6A3D9A"), name="")+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00", "#6A3D9A"), name="")+
   theme_classic()+
   theme(legend.position ='none', legend.direction = "horizontal",
         legend.box.margin = margin(0))+
@@ -2362,17 +2366,17 @@ ggplot(aes(color=Method, y=abserr,x=as.factor(Calibrations)),
          fill=guide_legend(nrow=4, byrow=TRUE))
 ggsave("MV-abserr-ILS-mcmctree.pdf",width=5,height = 4.5)
 
-ggplot(aes(color=Method, y=bias,x=as.factor(Calibrations)),
+ggplot(aes(color=Method, shape=isconcat, y=bias,x=as.factor(Calibrations)),
        data=merge(
-         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),],
-               outgroup+Method+replicate+Branch.Type+ratevar+Calibrations+conditionAD~'bias' ,value.var = "bias",fun.aggregate = mean),
-         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),],
+               outgroup+Method+replicate+Branch.Type+ratevar+Calibrations+conditionAD+isconcat~'bias' ,value.var = "bias",fun.aggregate = mean),
+         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
   scale_y_continuous(trans="identity",expression("Estimated" - "true length (bias)"))+
   scale_x_discrete(name="Number of Calibrations",labels=c('0', '3', '5'))+
   stat_summary()+
   facet_grid(Branch.Type~conditionAD,,labeller = labeller(ratevar = ratevar.labs))+
   stat_summary(aes(group=Method),geom="line")+
-  scale_color_manual(values=c("#FB9A99","#E31A1C", "#6A3D9A"), name="")+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00", "#6A3D9A"), name="")+
   theme_classic()+
   geom_hline(color="grey50",linetype=1,yintercept = 0)+
   theme(legend.position ='none', legend.direction = "horizontal",
@@ -2381,17 +2385,17 @@ ggplot(aes(color=Method, y=bias,x=as.factor(Calibrations)),
          fill=guide_legend(nrow=4, byrow=TRUE))
 ggsave("MV-bias-ILS-mcmctree.pdf",width=6,height = 3.5)
 
-ggplot(aes(color=Method, y=bias,x=as.factor(Calibrations)),
+ggplot(aes(color=Method, shape=isconcat, y=bias,x=as.factor(Calibrations)),
        data=merge(
-         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),],
-               outgroup+Method+replicate+Branch.Type+ratevar+Calibrations~'bias' ,value.var = "bias",fun.aggregate = mean),
-         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),],
+               outgroup+Method+replicate+Branch.Type+ratevar+Calibrations+isconcat~'bias' ,value.var = "bias",fun.aggregate = mean),
+         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
   scale_y_continuous(trans="identity",expression("Estimated" - "true length (bias)"))+
   scale_x_discrete(name="Number of Calibrations",labels=c('0', '3', '5'))+
   stat_summary()+
   facet_grid(Branch.Type~ratevar,,labeller = labeller(ratevar = ratevar.labs))+
   stat_summary(aes(group=Method),geom="line")+
-  scale_color_manual(values=c("#FB9A99","#E31A1C", "#6A3D9A"), name="")+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00", "#6A3D9A"), name="")+
   theme_classic()+
   geom_hline(color="grey50",linetype=1,yintercept = 0)+
   theme(legend.position ='none', legend.direction = "horizontal",
@@ -2402,22 +2406,22 @@ ggsave("MV-bias-ratevar-mcmctree.pdf",width=4.5,height = 3.5)
 
 ggplot(aes(color=Method, y=bias,x=as.factor(Calibrations)),
        data=merge(
-         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),],
-               outgroup+Method+replicate+Branch.Type+ratevar+Calibrations~'bias' ,value.var = "bias",fun.aggregate = mean),
-         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),],
+               outgroup+Method+replicate+Branch.Type+ratevar+Calibrations+isconcat~'bias' ,value.var = "bias",fun.aggregate = mean),
+         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate+Branch.Type~'AD' ,value.var = "AD",fun.aggregate = mean)))+
   scale_y_continuous(trans="identity",expression("Estimated" - "true length (bias)"))+
   scale_x_discrete(name="Number of Calibrations",labels=c('0', '3', '5'))+
   stat_summary()+
   facet_grid(Branch.Type~ratevar,,labeller = labeller(ratevar = ratevar.labs))+
   stat_summary(aes(group=Method),geom="line")+
-  scale_color_manual(values=c("#FB9A99","#E31A1C", "#6A3D9A"), name="")+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00", "#6A3D9A"), name="")+
   theme_classic()+
   geom_hline(color="grey50",linetype=1,yintercept = 0)+
   theme(legend.position ='bottom', legend.direction = "horizontal",
         legend.box.margin = margin(0))+
   guides(color=guide_legend(nrow=1, byrow=TRUE),
          fill=guide_legend(nrow=1, byrow=TRUE))
-ggsave("legend-mcmctree.pdf",width=7,height = 3.5)
+ggsave("legend-mcmctree_treepl.pdf",width=7,height = 3.5)
 
 
 
@@ -2438,7 +2442,8 @@ m$ratevar = as.factor(sub(".genes.*","",sub("outgroup.*.species.","",m$Condition
 m$ratevar = factor(m$ratevar)
 levels(m$ratevar) = list("0.15" = "High", "1.5" = "Med", "5" = "Low")
 m$outgroup = factor(grepl("outgroup.0", m$Condition))
-m = m[m$Method!="MCMCtree" & m$Taxon.Type=="internal",]
+#m = m[m$Method!="MCMCtree" & m$Taxon.Type=="internal",]
+m = m[m$Taxon.Type=="internal",]
 m$isconcat = factor(grepl("Concat", m$Method))
 
 ### Comment out to include negative branch lengths.
@@ -2455,17 +2460,17 @@ m <- m |> mutate(conditionAD = case_when(
   AD >= 0.75 & AD <= 1 ~ '[0.75,1)',
 ))
 
-ggplot(aes(color=Method, y=abserr,x=as.factor(Calibrations)),
+ggplot(aes(color=Method, shape=isconcat,y=abserr,x=as.factor(Calibrations)),
        data=merge(
-         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),],
-               outgroup+Method+replicate+ratevar+Calibrations+conditionAD~'abserr' ,value.var = "abserr",fun.aggregate = mean),
-         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
+         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),],
+               outgroup+Method+replicate+ratevar+Calibrations+conditionAD+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean),
+         dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
   scale_y_continuous(trans="identity",name="Mean absolute error\n(node age)")+
   scale_x_discrete(name="Number of Calibrations",labels=c('0', '3', '5'))+
   stat_summary()+
   facet_grid(ratevar~conditionAD,,labeller = labeller(ratevar = ratevar.labs))+
   stat_summary(aes(group=Method),geom="line")+
-  scale_color_manual(values=c("#FB9A99","#E31A1C", "#6A3D9A"), name="")+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00", "#6A3D9A"), name="")+
   theme_classic()+
   theme(legend.position ='none', legend.direction = "horizontal",
         legend.box.margin = margin(0))+
