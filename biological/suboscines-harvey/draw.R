@@ -61,19 +61,20 @@ ggsave("subsocines_ratio_family.pdf",width=8.5,height=8.5)
 
 df=read.csv('treeness.csv')
 df$comb = paste(df$Topology,df$Method)
+df$Topology = factor(df$Topology, levels=c('CAML', 'ASTRAL', 'wASTRAL'))
 
 ggplot(data=df, aes(x=Method, y=Treeness, fill=comb)) +
-  facet_wrap(~Topology,ncol=3)+
+  facet_wrap(~Topology,nrow=3)+
   geom_bar(stat="identity",colour="black")+
-  scale_fill_manual(values=c("#A6CEE3", "#1F78B4", "#B2DF8A", "#33A02C","red")) +
+  scale_fill_manual(values=c("#FF7F00", "#FDBF6F", "#FF7F00", "#FDBF6F","#FDBF6F")) +
   scale_x_discrete(name="Branch length")+
-  coord_cartesian(ylim=c(0,0.48))+
+  coord_cartesian(ylim=c(0,0.52))+
   geom_text(aes(label=Treeness), vjust=-0.3, size=3.5)+
   theme_classic()+
-  theme(legend.position = "none")+
+  theme(legend.position = "none",axis.title = element_text(size = 14))+
   guides(color=guide_legend(ncol=3, byrow=TRUE),
          linetype=guide_legend(ncol=3, byrow=TRUE))
-ggsave("subsocines_treeness.pdf",width=5,height=2.5)
+ggsave("subsocines_treeness.pdf",width=2.2,height=4)
 
 
 df=read.csv('genera_treepl_castlespro_concat.csv')
@@ -135,7 +136,7 @@ ggplot(df[df$time<62.042784,], aes(x =time,y=lineages,color=method)) +
   guides(color=guide_legend(nrow=1, byrow=TRUE),
          fill=guide_legend(nrow=1, byrow=TRUE),
          legend.title=element_blank())
-ggsave("caml_ltt_log.pdf",width=4,height = 3)
+ggsave("caml_ltt_log.pdf",width=4.5,height = 3)
 
 ggplot(df[df$time<62.042784 & df$time>60,], aes(x =time,y=lineages,color=method)) +
   geom_step(size=0.8) +
@@ -147,7 +148,7 @@ ggplot(df[df$time<62.042784 & df$time>60,], aes(x =time,y=lineages,color=method)
   guides(color=guide_legend(nrow=1, byrow=TRUE),
          fill=guide_legend(nrow=1, byrow=TRUE),
          legend.title=element_blank())
-ggsave("caml_ltt_log_end.pdf",width=4,height = 3)
+ggsave("caml_ltt_log_end.pdf",width=4.5,height = 3)
 
 df=read.csv('suboscines_ltt.csv')
 
