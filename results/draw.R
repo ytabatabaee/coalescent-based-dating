@@ -800,11 +800,9 @@ ggsave("S100-rmse_dating_genes_n3-genes_arrow.pdf",width=6,height = 2.5)
 
 ## S100 branch length
 
-s0=read.csv('s100_dating_unit.no_OG_castles_pro.csv')
-s3=read.csv('s100_dating_normalized_n3.no_OG_castles_pro.csv')
-s10=read.csv('s100_dating_normalized_n10.no_OG_castles_pro.csv')
+## Examining MD-Cat results
 
-s=read.csv('s100_mdcat_normalized_n3_.csv')
+s=read.csv('s100_mdcat_normalized_n3.csv')
 s$Calibrations <- 3
 s$Condition =  factor(s$Condition) 
 levels(s$Condition) = list("200bp" = "fasttree_genetrees_200_non", 
@@ -863,6 +861,10 @@ dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod,Branch.Type) %>%
   guides(color=guide_legend(nrow=3, byrow=TRUE),
          fill=guide_legend(nrow=3, byrow=TRUE), shape='none')
 ggsave("S100-bias_dating_calib_pro-arrow-mdcat.pdf",width=3,height = 4)
+
+s0=read.csv('s100_dating_unit.no_OG_castles_pro.csv')
+s3=read.csv('s100_dating_normalized_n3.no_OG_castles_pro.csv')
+s10=read.csv('s100_dating_normalized_n10.no_OG_castles_pro.csv')
 
 s0=read.csv('s100_dating_unit.csv')
 s3=read.csv('s100_dating_normalized_n3.csv')
