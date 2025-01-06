@@ -6,7 +6,7 @@ corr=read.csv('treepl_castles_caml_corr.csv')
 ggplot(aes(x=l1,y=l2,color=Branch.Type),data=corr)+
   geom_point(alpha=0.09)+
   scale_x_continuous(trans="log10",name="Branch length (CASTLES-Pro)")+
-  scale_y_continuous(trans="log10",name="Branch length (CAML)")+
+  scale_y_continuous(trans="log10",name="Branch length (ConBL)")+
   facet_wrap(~Topology,ncol=4)+
   stat_smooth(se=F,method="glm",formula=y ~ poly(x, 2))+
   scale_color_brewer(palette = "Dark2")+
@@ -22,7 +22,7 @@ corr=read.csv('node_age_corr.csv')
 ggplot(aes(x=l1,y=l2,color=Node.Type),data=corr)+
   geom_point(alpha=0.1)+
   scale_x_continuous(trans="log10",name="Node age (CASTLES-Pro)")+
-  scale_y_continuous(trans="log10",name="Node age (CAML)")+
+  scale_y_continuous(trans="log10",name="Node age (ConBL)")+
   facet_wrap(~Topology,ncol=4)+
   stat_smooth(se=F,method="glm",formula=y ~ poly(x, 2))+
   scale_color_brewer(palette = "Dark2")+
@@ -45,10 +45,10 @@ ggplot(corr_per_family[corr_per_family$Branch.Type=='terminal',], aes(x=howardmo
   stat_summary(position = position_dodge(width=0.86))+
   #scale_fill_brewer(palette = clad,name="",direction = -1)+
   scale_color_brewer(palette = "Spectral",name="")+
-  scale_y_continuous(name="Branch length ratio" )+
+  scale_y_continuous(trans="log2",labels=c(expression(1/6),1,expression(6)),limit = c(-1, 6),breaks=c(1/6,1,6),name="Branch length ratio (log scale)" )+
   facet_wrap(~Topology,ncol=1)+
   geom_hline(yintercept=1, linetype="dashed", color = "grey40")+
-  coord_cartesian(ylim=c(0,25))+
+  coord_cartesian(ylim=c(-1,11))+
   theme_classic()+
   theme(legend.position = 'bottom', 
         legend.title = element_blank(),
@@ -57,7 +57,7 @@ ggplot(corr_per_family[corr_per_family$Branch.Type=='terminal',], aes(x=howardmo
   scale_x_discrete(name="", labels = "")+
   guides(color=guide_legend(ncol=3, byrow=TRUE),
          linetype=guide_legend(ncol=3, byrow=TRUE))
-ggsave("subsocines_ratio_family.pdf",width=8.5,height=8.5)
+ggsave("subsocines_ratio_family_log.pdf",width=8.5,height=8.5)
 
 df=read.csv('treeness.csv')
 df$comb = paste(df$Topology,df$Method)
