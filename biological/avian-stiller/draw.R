@@ -101,8 +101,8 @@ ggsave("median_families.pdf",width=3.1,height = 5.5)
 
 df=read.csv('genera_castlespro_concat.csv')
 df = df[df$method!="MD-CAT+CASTLES-Pro" & df$method!="MD-CAT+ConBL",]
-df = df[df$method!="TreePL+CASTLES-Pro" & df$method!="TreePL+ConBL",]
-#df = df[df$method!="wLogDate+CASTLES-Pro" & df$method!="wLogDate+ConBL",]
+#df = df[df$method!="TreePL+CASTLES-Pro" & df$method!="TreePL+ConBL",]
+df = df[df$method!="wLogDate+CASTLES-Pro" & df$method!="wLogDate+ConBL",]
 df2 <- df %>% spread(method,age)
 
 ggplot(aes(x=age,y=genus,color=method),data=df)+
@@ -173,7 +173,7 @@ ggsave("mcmctree_genera.pdf",width=3,height = 5.5)
 
 df=read.csv('families_castlespro_concat.csv')
 df = df[df$method!="MD-CAT+CASTLES-Pro" & df$method!="MD-CAT+ConBL",]
-df = df[df$method!="TreePL+CASTLES-Pro" & df$method!="TreePL+ConBL",]
+#df = df[df$method!="TreePL+CASTLES-Pro" & df$method!="TreePL+ConBL",]
 #df = df[df$method!="wLogDate+CASTLES-Pro" & df$method!="wLogDate+ConBL",]
 df2 <- df %>% spread(method,age)
 
@@ -218,7 +218,7 @@ ggsave("wlogdate_median_families.pdf",width=3.1,height = 5.5)
 
 df=read.csv('orders_castlespro_concat.csv')
 df = df[df$method!="MD-CAT+CASTLES-Pro" & df$method!="MD-CAT+ConBL",]
-df = df[df$method!="TreePL+CASTLES-Pro" & df$method!="TreePL+ConBL",]
+#df = df[df$method!="TreePL+CASTLES-Pro" & df$method!="TreePL+ConBL",]
 #df = df[df$method!="wLogDate+CASTLES-Pro" & df$method!="wLogDate+ConBL",]
 df2 <- df %>% spread(method,age)
 
@@ -525,7 +525,7 @@ ggplot(corr_per_family[corr_per_family$Branch.Type=='terminal',], aes(x=clade_ma
   #scale_fill_brewer(palette = clad,name="",direction = -1)+
   #scale_color_brewer(palette = "Spectral",name="")+
   scale_color_manual(name = "", values = unique(corr_per_family$clade_mag7), labels = unique(corr_per_family$clade_mag7)) +
-  scale_y_continuous(trans="log2",labels=c(expression(1/3),1,expression(3)),breaks=c(1/3,1,3),name="Branch length ratio (log scale)")+
+  scale_y_continuous(trans="log2",labels=c(expression(1/3),1,expression(3)),breaks=c(1/3,1,3),name="Branch length ratio (log scale)\n (ConBL / CoalBL)")+
   geom_hline(yintercept=1, linetype="dashed", color = "grey40")+
   coord_cartesian(ylim=c(0.25,4))+
   theme_classic()+

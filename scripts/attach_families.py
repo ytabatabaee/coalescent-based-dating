@@ -11,10 +11,10 @@ def main(args):
                             schema='newick',
                             rooting='force-unrooted',
                             taxon_namespace=tax)
-    #annotations = pd.read_csv(args.annotation,sep=',')#sep='\t')
-    annotations = pd.read_csv(args.annotation,sep='\t')
-    #ant_dict = annotations.set_index('tipnamecodes')['howardmoore.order'].to_dict() # change family to order
-    ant_dict = annotations.set_index('taxa')['family'].to_dict() # change family to order
+    annotations = pd.read_csv(args.annotation,sep=',')#sep='\t')
+    #annotations = pd.read_csv(args.annotation,sep='\t')
+    ant_dict = annotations.set_index('tipnamecodes')['howardmoore.family'].to_dict()
+    #ant_dict = annotations.set_index('taxa')['family'].to_dict() # change family to order
     for node in tr.preorder_node_iter():
         if node.is_leaf():
             node.taxon.label = node.taxon.label.replace(" ", "_")

@@ -1,0 +1,41 @@
+ 1265  nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre
+ 1266  nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|sort
+ 1267  nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|sort|sed -e "s/_.*//g"
+ 1268  nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|sort|sed -e "s/_.*//g"|uniq -c
+ 1269  nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|sort|sed -e "s/_.*//g"|uniq -c|sort -k1n
+ 1270  nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|sort|sed -e "s/_.*//g"|uniq -c|sort -k1n|tail -n 20
+ 1271  nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|sort|sed -e "s/_.*//g"|uniq -c|sort -k1n|tail -n 24
+ 1272  nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|sort|sed -e "s/_.*//g"|uniq -c|sort -k1n|tail -n 24|cut -f2
+ 1273  nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|sort|sed -e "s/_.*//g"|uniq -c|sort -k1n|tail -n 24|cut -f2 -d' '
+ 1274  nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|sort|sed -e "s/_.*//g"|uniq -c|sort -k1n|tail -n 24|cut -f5 -d' '
+ 1275  nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|sort|sed -e "s/_.*//g"|uniq -c|sort -k1n|tail -n 24|cut -f5 -d' ' > genera.txt
+ 1276  x=Falco
+ 1277  nw_distance -ml mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre 
+ 1278  nw_distance -h
+ 1279  nw_distance -ml mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre `nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|grep $x `
+ 1280  nw_distance -ml mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre `nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|grep $x `|sed -e "s/^/$x\t/"
+ 1281  while `read a`; do nw_distance -ml mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre `nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt
+ 1282  while `read x`; do nw_distance -ml mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre `nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt
+ 1283  while `read x`; do echo $x; nw_distance -ml mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre `nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt
+ 1284  while read x; do echo $x; nw_distance -ml mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre `nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt
+ 1285  while read x; do nw_distance -ml mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre `nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt
+ 1286  while read x; do nw_distance -ml mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre `nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniqe
+ 1287  while read x; do nw_distance -ml mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre `nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq
+ 1288  t=mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre; while read x; do nw_distance -m $t `nw_labels -I $t|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq
+ 1289  echo $t
+ 1290  nw_labels -I $t
+ 1291  nw_labels -I $t > labels
+ 1292  t=mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre; while read x; do nw_distance -m $t `cat labels|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq
+ 1293  t=mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre; while read x; do nw_distance -m $t `cat labels|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt
+ 1294  while read x; do nw_distance -ml mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre `nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq
+ 1295  while read x; do nw_distance -ml $t `nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq
+ 1296  cat nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre
+ 1297  nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre
+ 1298  nw_labels -I mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre> label_and_remove_og.pys
+ 1299  while read x; do nw_distance -ml $t `cat labels|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq
+ 1300  while read x; do nw_distance -ml $t `cat labels|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq
+ 1301  ls
+ 1302  pate <(t=mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre; while read x; do nw_distance -ml $t `cat labels|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq )
+ 1303  paste <(t=mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre; while read x; do nw_distance -ml $t `cat labels|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq )
+ 1304  paste <(t=mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre; while read x; do nw_distance -ml $t `cat labels|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq ) <(t=mdcat_median_40Kl_caml_stiller.rooted.tre; while read x; do nw_distance -ml $t `cat labels|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq)
+ 1305  paste <(t=mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre; while read x; do nw_distance -ml $t `cat labels|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq ) <(t=mdcat_median_40Kl_caml_stiller.rooted.tre; while read x; do nw_distance -ml $t `cat labels|grep $x `|sed -e "s/^/$x\t/"; done < genera.txt|uniq)|column -t
