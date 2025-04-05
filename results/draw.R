@@ -1654,12 +1654,12 @@ ggsave("S100-rmse-perrep_dating.pdf",width=7,height = 5)
 
 ### TMRCA
 
-m=read.csv('mvroot_estgt_dating_tmrca.csv')
+m=read.csv('mvroot_estgt_dating_tmrca_ingroup.csv')
 m$outgroup = factor(grepl("outgroup.1", m$Condition))
-m$Method = factor(m$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'))
+m$Method = factor(m$Method, levels=c('LSD+CASTLES-Pro', 'LSD+ConBL', 'wLogDate+CASTLES-Pro', 'wLogDate+ConBL', 'MD-Cat+CASTLES-Pro', 'MD-Cat+ConBL', 'TreePL+CASTLES-Pro', 'TreePL+ConBL', 'MCMCtree'))
 #m = m[m$Method!="MCMCtree",]
 m$ratevar = factor(sub(".genes.*","",sub("outgroup.*.species.","",m$Condition)))
-m$isconcat = factor(grepl("Concat", m$Method))
+m$isconcat = factor(grepl("ConBL", m$Method))
 m$log10err = log10(m$l.est / m$l.true )
 m$abserr = abs(m$l.true - m$l.est)
 m$ratio = m$l.true/m$l.est
@@ -1735,7 +1735,7 @@ ggplot(aes(x=cut(AD,4), y=(l.true)/l.est,color=Method,shape=isconcat), data=m)+
   guides(color=guide_legend(nrow=3, byrow=TRUE),
          fill=guide_legend(nrow=3, byrow=TRUE),
          shape="none")
-ggsave("MV-tmrca_dating_calib.pdf",width=8,height = 6.2)
+ggsave("MV-tmrca_dating_calib_ingroup.pdf",width=8,height = 6.2)
 
 ggplot(aes(x=ratevar, y=(l.true)/l.est,color=Method,shape=isconcat), data=m)+
   scale_y_continuous(trans="identity",name=expression("True / estimated tMRCA (log scale)"))+
@@ -1753,15 +1753,15 @@ ggplot(aes(x=ratevar, y=(l.true)/l.est,color=Method,shape=isconcat), data=m)+
   guides(color=guide_legend(nrow=3, byrow=TRUE),
          fill=guide_legend(nrow=3, byrow=TRUE),
          shape="none")
-ggsave("MV-tmrca_dating_calib_ratevar.pdf",width=8,height = 4.5)
+ggsave("MV-tmrca_dating_calib_ratevar_ingroup.pdf",width=8,height = 4.5)
 
 ### TREENESS
 
 m=read.csv('mvroot_estgt_dating_treeness.csv')
 m$outgroup = factor(grepl("outgroup.1", m$Condition))
-m$Method = factor(m$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'test', 'MCMCtree'))
+m$Method = factor(m$Method, levels=c('LSD+CASTLES-Pro', 'LSD+ConBL', 'wLogDate+CASTLES-Pro', 'wLogDate+ConBL', 'MD-Cat+CASTLES-Pro', 'MD-Cat+ConBL', 'TreePL+CASTLES-Pro', 'TreePL+ConBL', 'MCMCtree'))
 m$ratevar = factor(sub(".genes.*","",sub("outgroup.*.species.","",m$Condition)))
-m$isconcat = factor(grepl("Concat", m$Method))
+m$isconcat = factor(grepl("ConBL", m$Method))
 m$log10err = log10(m$l.est / m$l.true )
 m$abserr = abs(m$l.true - m$l.est)
 m$bias = m$l.est - m$l.true
@@ -1893,8 +1893,8 @@ ggsave("MV-treeness_dating_calib_ratevar.pdf",width=8,height = 4.5)
 ### BRANCH LENGTH
 
 ## root-unfixed experiments
-m3 = read.csv('mvroot_estgt_dating_n3_normalized_ru.csv')
-m5 = read.csv('mvroot_estgt_dating_n5_normalized_ru.csv')
+m3 = read.csv('mvroot_estgt_dating_n3_normalized_ru_og.csv')
+m5 = read.csv('mvroot_estgt_dating_n5_normalized_ru_og.csv')
 m3$Calibrations <- 3
 m5$Calibrations <- 5
 m <- rbind(m3,m5)
@@ -1918,7 +1918,7 @@ m <- m |> mutate(conditionAD = case_when(
   AD >= 0.5 & AD <= 0.75 ~ '[0.5,0.75)',
   AD >= 0.75 & AD <= 1 ~ '[0.75,1)',
 ))
-m$ru='Root-fixed'
+m$ru='Root-unfixed'
 
 
 dtemp=merge(
@@ -1946,7 +1946,7 @@ dtemp %>% group_by(Calibrations,conditionAD,Branch.Type,isconcat,datingMethod,ru
   guides(color=guide_legend(nrow=1, byrow=TRUE),
          fill=guide_legend(nrow=1, byrow=TRUE),
          shape='none')
-ggsave("MV-bias_dating_bycalib-pro_broken_rf.pdf",width=5,height =6)
+ggsave("MV-bias_dating_bycalib-pro_broken_ru_og.pdf",width=5,height =6)
 
 dtemp=merge(
   dcast(data=m[m$outgroup ==FALSE,],
