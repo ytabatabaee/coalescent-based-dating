@@ -253,9 +253,9 @@ s0=read.csv('s100_dating_unit_node_age.csv')
 s3=read.csv('s100_dating_normalized_n3_node_age.csv')
 s10=read.csv('s100_dating_normalized_n10_node_age.csv')
 
-s0=read.csv('s100_dating_unit_node_age_no_OG.csv')
-s3=read.csv('s100_dating_normalized_n3_node_age_no_OG.csv')
-s10=read.csv('s100_dating_normalized_n10_node_age_no_OG.csv')
+#s0=read.csv('s100_dating_unit_node_age_no_OG.csv')
+#s3=read.csv('s100_dating_normalized_n3_node_age_no_OG.csv')
+#s10=read.csv('s100_dating_normalized_n10_node_age_no_OG.csv')
 
 
 s0$Calibrations <- 0
@@ -278,11 +278,14 @@ s$log10err = log10(s$age.est / s$age.true )
 s$abserr = abs(s$age.true - s$age.est)
 s$se = (s$age.est - s$age.true)^2 
 s$bias = s$age.est - s$age.true
+s$relbias = (s$age.est - s$age.true)/s$age.true
 s <- s |> mutate(conditionAD = case_when(
   AD >= 0.3 & AD < 0.4 ~ '[0.3,0.4)',
   AD >= 0.4 & AD <= 0.5 ~ '[0.4,0.5)',
   AD >= 0.5 & AD <= 0.6 ~ '[0.5,0.6)',
 ))
+s$datingMethod = sub("\\+.*","",s$Method)
+head(s)
 
 dtemp=dcast(data=s,
             Condition+Method+replicate+Calibrations+Taxon.Type+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean)
@@ -304,7 +307,86 @@ dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod) %>%
         axis.text.x = element_text(angle=0))+
   guides(color=guide_legend(nrow=3, byrow=TRUE),
          fill=guide_legend(nrow=3, byrow=TRUE), shape='none')
-ggsave("S100-node-age_abserr-dating_calib_pro-arrow.pdf",width=5,height = 2.5)
+ggsave("S100-node-age_abserr-dating_calib_pro-arrow.pdf",width=4.8,height = 2.5)
+
+## Divide into shallow and deep. 1/4 gives roughly the same number of deep and shallow
+Position.labs <- c("Shallow","Deep")
+names(Position.labs) <- c(TRUE, FALSE)
+s$shallow=s$age.true<1/4
+s %>% group_by(shallow) %>% summarise(n=n())
+
+head(s)
+s %>%  group_by(Condition,Method,replicate,Calibrations,shallow,isconcat,datingMethod,conditionAD) %>%
+  summarise(abserr = mean(abserr), bias= mean(bias),relbias= median(relbias)) %>%
+  filter(datingMethod=="TreePL") %>%
+  group_by(Condition,Calibrations,isconcat,datingMethod,shallow) %>%
+  summarise(abserr = mean(abserr) ,bias= mean(bias),relbias= mean(relbias)) %>% 
+  pivot_longer(cols=c(abserr,bias,relbias)) %>%
+  pivot_wider(names_from = isconcat,values_from = value) %>%
+  ggplot(aes(color=Condition,size=shallow))+
+  scale_y_continuous(trans="identity",name="Node age metrics")+
+  facet_wrap(~name,ncol=4,scales="free_y",labeller = labeller(name = c(bias=("Estimated − true (bias)"),relbias=("Estimated/true − 1 (relative bias)"),abserr="Mean absolute error")))+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "10"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(Condition))-2.5)/8+(as.numeric(factor(shallow))-1)/16,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(Condition))-2.5)/8+(as.numeric(factor(shallow))-1)/16),
+               arrow = arrow(length = unit(4,'pt')))+
+  #scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  scale_color_viridis_d(end = 0.8,direction = -1,name="")+
+  theme_classic()+
+  scale_size_manual(values = c(1,2)/2,name="",labels=Position.labs)+
+  theme(legend.position =  'bottom', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         shape='none')
+ggsave("S100-perrep_dating_calib-arrow-treepl_nodeage.pdf",width=6.2,height = 3.5)
+ggsave("S100-perrep_dating_calib-arrow-treepl_nodeage_relativebias.pdf",width=9.15,height = 3.5)
+
+
+s %>%  group_by(Condition,Method,replicate,Calibrations,shallow,isconcat,datingMethod,conditionAD) %>%
+  summarise(abserr = mean(abserr), bias= mean(bias),relbias= median(relbias)) %>%
+  group_by(Calibrations,isconcat,datingMethod,shallow) %>%
+  summarise(abserr = mean(abserr) ,bias= mean(bias),relbias= mean(relbias)) %>% 
+  pivot_longer(cols=c(abserr,bias,relbias)) %>%
+  pivot_wider(names_from = isconcat,values_from = value) %>%
+  ggplot(aes(color=datingMethod,size=shallow))+
+  scale_y_continuous(trans="identity",name="Node age metrics")+
+  facet_wrap(~name,ncol=4,scales="free_y",labeller = labeller(name = c(bias=("Estimated − true (bias)"),relbias=("Estimated/true − 1 (relative bias)"),abserr="Mean absolute error")))+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "10"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2.5)/8+(as.numeric(factor(shallow))-1)/16,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2.5)/8+(as.numeric(factor(shallow))-1)/16),
+               arrow = arrow(length = unit(4,'pt')))+
+  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  #scale_color_viridis_d(end = 0.8,direction = -1,name="")+
+  theme_classic()+
+  scale_size_manual(values = c(1,2)/2,name="",labels=Position.labs)+
+  theme(legend.position =  'bottom', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         shape='none')
+
+s[s$Taxon.Type=="internal"&s$datingMethod %in% c("TreePL"),] %>%
+  ggplot(aes(x=age.true,y=age.est,color=isconcat)) + geom_point(alpha=0.05,size=0.1)+
+  facet_grid(.~Calibrations,           labeller = label_both  )+
+  theme_classic()+
+  geom_abline(color="black",linetype="dashed",size=1)+
+  stat_smooth(se=F,method="lm",alpha=0.8)+
+  #scale_color_manual(values=c("#a02010","#20c0c0"),labels=c("CoalBL","ConBL"),name="")+
+  scale_color_brewer(palette = "Dark2",labels=c("CoalBL","ConBL"),name="TreePL+")+
+  xlab("True node age")+ylab("Esimated node age")+
+  #scale_x_continuous(breaks=c(1/4,3/4))+
+  #scale_y_continuous(breaks=c(1/4,3/4))+
+  coord_cartesian(xlim=c(0,0.5),ylim=c(0,0.75))+
+  stat_poly_eq(formula = y ~ x,coef.digits = 2,vstep = 0.08,size=3,
+               aes(label = sub(".*=..","",after_stat(eq.label))),
+               parse = TRUE)+
+  theme(legend.position = "none")
+ggsave("S100-node-age_scatter_all.pdf",width=7.5,height = 3.5)
 
 
 dtemp=dcast(data=s,
@@ -704,6 +786,94 @@ s$log10err = log10(s$l.est / s$l.true )
 s$abserr = abs(s$l.true - s$l.est)
 s$se = (s$l.est - s$l.true)^2 
 s$bias = s$l.est - s$l.true
+s$relbias = (s$l.est - s$l.true)/ s$l.true
+s$datingMethod = sub("\\+.*","",s$Method)
+
+s %>%  
+  group_by(Condition,Method,replicate,Calibrations,Branch.Type,genes,isconcat,datingMethod) %>%
+  summarise(abserr = mean(abserr), bias= mean(bias),relbias= median(relbias) )%>%
+  filter(datingMethod=="TreePL") %>%
+  group_by(Condition,Calibrations,isconcat,datingMethod,Branch.Type,genes) %>%
+  summarise(abserr = mean(abserr) ,bias= mean(bias),relbias= mean(relbias)) %>% 
+  pivot_longer(cols=c(abserr,bias,relbias)) %>%
+  pivot_wider(names_from = isconcat,values_from = value) %>%
+  ggplot(aes(color=Condition,size=Branch.Type))+
+  scale_y_continuous(trans="identity",name="Mean absolute error\n(branch length)")+
+  facet_wrap(~name,ncol=4,scales="free_y",labeller = labeller(name = c(bias=("Estimated − true (bias)"),relbias=("Estimated/true − 1 (relative bias)"),abserr="Mean absolute error")))+
+  #scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "10"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(genes)))+(as.numeric(factor(Condition))-2.5)/8+(as.numeric(factor(Branch.Type))-1)/16,
+                   xend=(as.numeric(factor(genes)))+(as.numeric(factor(Condition))-2.5)/8+(as.numeric(factor(Branch.Type))-1)/16),
+               arrow = arrow(length = unit(4,'pt')))+
+  #scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  scale_color_viridis_d(end = 0.8,direction = -1,name="")+
+  theme_classic()+
+  scale_size_manual(values = c(1,2)/2,name="")+
+  theme(legend.position =  'bottom', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         shape='none')
+
+s %>%  
+  group_by(Condition,Method,replicate,Calibrations,Branch.Type,genes,isconcat,datingMethod) %>%
+  summarise(abserr = mean(abserr), bias= mean(bias),relbias= median(relbias) )%>%
+  filter(datingMethod=="TreePL") %>%
+  group_by(Condition,Calibrations,isconcat,datingMethod,Branch.Type,genes) %>%
+  ggplot(aes(shape=Branch.Type,x=genes,y=abserr,color=isconcat))+
+  scale_y_continuous(trans="identity",name="Mean absolute error\n(branch length)")+
+  stat_summary()+
+  stat_summary(geom="line")+
+  scale_x_continuous(breaks = c(50,200,500,1000),name="gene count")+
+  scale_color_brewer(palette = "Dark2",name = "TreePL+",labels=c("CoalBL","ConBL"))+
+  theme_classic()+
+  scale_size_manual(values = c(1,2)/2,name="")+
+  scale_shape(name="")+
+  theme(legend.position =  'right', 
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE))
+ggsave("S100-dating_error-genes-treepl-summary.pdf",width=3.2,height = 2.5)
+
+s %>%  
+  group_by(Condition,Method,replicate,Calibrations,Branch.Type,genes,isconcat,datingMethod) %>%
+  summarise(abserr = mean(abserr), bias= mean(bias),relbias= median(relbias) )%>%
+  filter(datingMethod=="TreePL") %>%
+  group_by(Condition,Calibrations,isconcat,datingMethod,Branch.Type,genes) %>%
+  ggplot(aes(shape=Branch.Type,x=Condition,y=abserr,color=isconcat))+
+  scale_y_continuous(trans="identity",name="Mean absolute error\n(branch length)")+
+  stat_summary()+
+  stat_summary(aes(group=interaction(Branch.Type,isconcat)),geom="line")+
+  scale_color_brewer(palette = "Dark2",name = "TreePL+",labels=c("CoalBL","ConBL"))+
+  theme_classic()+
+  scale_size_manual(values = c(1,2)/2,name="")+
+  scale_shape(name="")+
+  theme(legend.position =  'none', 
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE))
+ggsave("S100-dating_error-genes-treepl-summary_gtee.pdf",width=2.8,height = 2.5)
+
+s[s$datingMethod %in% c("TreePL"),] %>%
+  ggplot(aes(x=age.true,y=age.est,color=isconcat)) + geom_point(alpha=0.1,size=0.5)+
+  facet_grid(.~Condition,
+             labeller = labeller(ratevar = ratevar.labs,shallow=Position.labs,isconcat=concat.labs )
+  )+
+  theme_classic()+
+  geom_abline(color="black",linetype="dashed",size=1)+
+  stat_smooth(se=F,method="lm")+
+  #scale_color_manual(values=c("#a02010","#20c0c0"),labels=c("CoalBL","ConBL"),name="")+
+  scale_color_brewer(palette = "Dark2",labels=c("CoalBL","ConBL"),name="TreePL+")+
+  xlab("True node age")+ylab("Esimated node age")+
+  scale_x_continuous(breaks=c(1/4,3/4))+
+  scale_y_continuous(breaks=c(1/4,3/4))+
+  stat_poly_eq(formula = y ~ x,coef.digits = 2,vstep = 0.08,size=3,
+               aes(label = sub(".*=..","",after_stat(eq.label))),
+               parse = TRUE)+
+  theme(legend.position = "right",axis.title.x = element_blank())
 
 ggplot(data=dcast(data=s,Method+replicate+isconcat+genes+Condition~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x))), aes(x=as.factor(genes),y=log10err,color=Method,shape=isconcat))+
   scale_y_continuous(trans="identity",name="Mean log10 error")+
@@ -723,6 +893,27 @@ ggsave("S100-dating_error-logerror_n3_genes.pdf",width=6,height = 2.5)
 dtemp=dcast(data=s,
             Condition+Method+replicate+genes+Branch.Type+isconcat~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x)))
 dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
+dtemp %>% group_by(Condition,genes,isconcat,datingMethod) %>%
+  summarise(log10err = mean(log10err)) %>% pivot_wider(names_from = isconcat,values_from = log10err) %>%
+  ggplot(aes(color=datingMethod))+
+  scale_y_continuous(trans="identity",name="Mean log10 error")+
+  facet_wrap(~Condition,ncol=4)+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(genes)))+(as.numeric(factor(datingMethod))-4)/8,
+                   xend=(as.numeric(factor(genes)))+(as.numeric(factor(datingMethod))-4)/8),
+               arrow = arrow(length = unit(5,'pt')))+
+  scale_x_continuous(name="Number of genes",breaks = c(1, 2, 3, 4),label = c("50", "200", "500", "1000"))+
+  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  theme_classic()+
+  theme(legend.position =  'none', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),shape='none')
+ggsave("S100-dating_error-logerror_n3_genes_arrow.pdf",width=6,height = 2.5)
+
+dtemp=dcast(data=s,
+            Condition+Method+replicate+genes+Branch.Type+isconcat~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x)))
 dtemp %>% group_by(Condition,genes,isconcat,datingMethod) %>%
   summarise(log10err = mean(log10err)) %>% pivot_wider(names_from = isconcat,values_from = log10err) %>%
   ggplot(aes(color=datingMethod))+
@@ -906,101 +1097,6 @@ ggsave("S100-rmse_dating_genes_n3-genes_arrow.pdf",width=6,height = 2.5)
 
 ## S100 branch length
 
-s0=read.csv('s100_dating_unit_no_OG.csv')
-s3=read.csv('s100_dating_n3_no_OG.csv')
-s10=read.csv('s100_dating_n10_no_OG.csv')
-
-s0$Calibrations <- 0
-s3$Calibrations <- 3
-s10$Calibrations <- 10
-s_nOG <- rbind(s0,s3,s10)
-
-s_nOG$Method = factor(s_nOG$Method, levels=c('LSD+CASTLES-Pro', 'LSD+ConBL', 'wLogDate+CASTLES-Pro', 'wLogDate+ConBL', 'MD-Cat+CASTLES-Pro', 'MD-Cat+ConBL', 'TreePL+CASTLES-Pro', 'TreePL+ConBL'))
-s_nOG$Condition =  factor(s_nOG$Condition) 
-levels(s_nOG$Condition) = list("200bp" = "fasttree_genetrees_200_non", 
-                           "400bp" = "fasttree_genetrees_400_non", 
-                           "800bp" = "fasttree_genetrees_800_non",
-                           "1600bp" = "fasttree_genetrees_1600_non")
-s_nOG$isconcat = factor(grepl("ConBL", s_nOG$Method))
-#s$l.est = ifelse(s$l.est <=0, 1e-6, s$l.est)
-s_nOG$log10err = log10(s_nOG$l.est / s_nOG$l.true )
-s_nOG$abserr = abs(s_nOG$l.true - s_nOG$l.est)
-s_nOG$se = (s_nOG$l.est - s_nOG$l.true)^2 
-s_nOG$bias = s_nOG$l.est - s_nOG$l.true
-
-s0=read.csv('s100_dating_unit.csv')
-s3=read.csv('s100_dating_n3.csv')
-s10=read.csv('s100_dating_n10.csv')
-
-s0$Calibrations <- 0
-s3$Calibrations <- 3
-s10$Calibrations <- 10
-s <- rbind(s0,s3,s10)
-
-s$Method = factor(s$Method, levels=c('LSD+CASTLES-Pro', 'LSD+ConBL', 'wLogDate+CASTLES-Pro', 'wLogDate+ConBL', 'MD-Cat+CASTLES-Pro', 'MD-Cat+ConBL', 'TreePL+CASTLES-Pro', 'TreePL+ConBL'))
-s$Condition =  factor(s$Condition) 
-levels(s$Condition) = list("200bp" = "fasttree_genetrees_200_non", 
-                           "400bp" = "fasttree_genetrees_400_non", 
-                           "800bp" = "fasttree_genetrees_800_non",
-                           "1600bp" = "fasttree_genetrees_1600_non")
-s$isconcat = factor(grepl("ConBL", s$Method))
-s$l.est = ifelse(s$l.est <=0, 1e-6, s$l.est)
-s$log10err = log10(s$l.est / s$l.true )
-s$abserr = abs(s$l.true - s$l.est)
-s$se = (s$l.est - s$l.true)^2 
-s$bias = s$l.est - s$l.true
-
-# mean(s[s$Method=='MD-Cat+CASTLES-Pro' & s$Calibrations==3 & s$Condition=='1600bp' & s$Branch.Type=='terminal',]$bias)
-
-dtemp=dcast(data=s,
-            Condition+Method+replicate+Calibrations+Branch.Type+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean)
-dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
-dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod) %>%
-  summarise(abserr = mean(abserr)) %>% pivot_wider(names_from = isconcat,values_from = abserr) %>%
-  ggplot(aes(color=datingMethod))+
-  scale_y_continuous(trans="identity",name="Mean absolute error")+
-  facet_wrap(~Condition,ncol=4)+
-  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2),label = c("3", "10"))+
-  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
-                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2)/8,
-                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2)/8),
-               arrow = arrow(length = unit(5,'pt')))+
-  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C", "#6A3D9A", "#CD6E94"), name="")+
-  theme_classic()+
-  theme(legend.position =  'none', legend.direction = "horizontal",
-        legend.box.margin = margin(0), legend.margin = margin(0),
-        axis.text.x = element_text(angle=0))+
-  guides(color=guide_legend(nrow=3, byrow=TRUE),
-         fill=guide_legend(nrow=3, byrow=TRUE), shape='none')
-ggsave("S100_abserr-dating_calib_pro-arrow.pdf",width=5,height = 2.5)
-
-dtemp=dcast(data=s,
-            Condition+Method+replicate+Calibrations+Branch.Type+isconcat~'bias' ,value.var = "bias",fun.aggregate = mean)
-dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
-dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod,Branch.Type) %>%
-  summarise(bias = mean(bias)) %>% pivot_wider(names_from = isconcat,values_from = bias) %>%
-  ggplot(aes(color=datingMethod))+
-  scale_y_continuous(trans="identity",name=expression("Estimated" - "true length (bias)"))+
-  facet_grid(Branch.Type~Condition)+
-  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "10"))+
-  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
-                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2)/8,
-                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2)/8),
-               arrow = arrow(length = unit(5,'pt')))+
-  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C", "#6A3D9A",  "#CD6E94"), name="")+
-  theme_classic()+
-  geom_hline(color="grey50",linetype=1,yintercept = 0)+
-  theme(legend.position =  'none', legend.direction = "horizontal",
-        legend.box.margin = margin(0), legend.margin = margin(0),
-        axis.text.x = element_text(angle=0))+
-  guides(color=guide_legend(nrow=3, byrow=TRUE),
-         fill=guide_legend(nrow=3, byrow=TRUE), shape='none')
-ggsave("S100-bias_dating_calib_pro-arrow.pdf",width=5,height = 3.5)
-
-s0=read.csv('s100_dating_unit_no_OG.csv')
-s3=read.csv('s100_dating_n3_normalized_no_OG.csv')
-s10=read.csv('s100_dating_n10_normalized_no_OG.csv')
-
 s0=read.csv('s100_dating_unit.csv')
 s3=read.csv('s100_dating_normalized_n3.csv')
 s10=read.csv('s100_dating_normalized_n10.csv')
@@ -1024,12 +1120,88 @@ s$log10err = log10(s$l.est / s$l.true )
 s$abserr = abs(s$l.true - s$l.est)
 s$se = (s$l.est - s$l.true)^2 
 s$bias = s$l.est - s$l.true
+s$relbias = (s$l.est - s$l.true)/s$l.true
 s <- s |> mutate(conditionAD = case_when(
   AD >= 0.3 & AD < 0.4 ~ '[0.3,0.4)',
   AD >= 0.4 & AD <= 0.5 ~ '[0.4,0.5)',
   AD >= 0.5 & AD <= 0.6 ~ '[0.5,0.6)',
 ))
+s$datingMethod = sub("\\+.*","",s$Method)
 
+s %>%  
+  group_by(Condition,Method,replicate,Calibrations,Branch.Type,isconcat,datingMethod,conditionAD) %>%
+  summarise(abserr = mean(abserr), bias= mean(bias),relbias= median(relbias) )%>%
+  filter(datingMethod=="TreePL") %>%
+  group_by(Condition,Calibrations,isconcat,datingMethod,Branch.Type) %>%
+  summarise(abserr = mean(abserr) ,bias= mean(bias),relbias= mean(relbias)) %>% 
+  pivot_longer(cols=c(abserr,bias,relbias)) %>%
+  pivot_wider(names_from = isconcat,values_from = value) %>%
+  ggplot(aes(color=Condition,size=Branch.Type))+
+  scale_y_continuous(trans="identity",name="Mean absolute error\n(branch length)")+
+  facet_wrap(~name,ncol=4,scales="free_y",labeller = labeller(name = c(bias=("Estimated − true (bias)"),relbias=("Estimated/true − 1 (relative bias)"),abserr="Mean absolute error")))+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "10"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(Condition))-2.5)/8+(as.numeric(factor(Branch.Type))-1)/16,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(Condition))-2.5)/8+(as.numeric(factor(Branch.Type))-1)/16),
+               arrow = arrow(length = unit(4,'pt')))+
+  #scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  scale_color_viridis_d(end = 0.8,direction = -1,name="")+
+  theme_classic()+
+  scale_size_manual(values = c(1,2)/2,name="")+
+  theme(legend.position =  'bottom', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         shape='none')
+ggsave("S100-perrep_dating_calib-arrow-treepl_relative.pdf",width=9.15,height = 3.5)
+
+
+s %>%  
+  group_by(Condition,Method,replicate,Calibrations,Branch.Type,isconcat,datingMethod) %>%
+  summarise(abserr = mean(abserr), bias= mean(bias),relbias= median(relbias) )%>%
+  filter(datingMethod=="TreePL") %>%
+  group_by(Condition,Calibrations,isconcat,datingMethod,Branch.Type) %>%
+  ggplot(aes(shape=Branch.Type,x=Condition,y=abserr,color=isconcat))+
+  scale_y_continuous(trans="identity",name="Mean absolute error\n(branch length)")+
+  stat_summary()+
+  stat_summary(aes(group=interaction(isconcat,Branch.Type)),geom="line")+
+  #scale_x_continuous(breaks = c(50,200,500,1000),name="gene count")+
+  scale_color_brewer(palette = "Dark2",name = "TreePL+",labels=c("CoalBL","ConBL"))+
+  theme_classic()+
+  scale_size_manual(values = c(1,2)/2,name="")+
+  scale_shape(name="")+
+  theme(legend.position =  'none', 
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE))
+ggsave("S100-dating_error-treepl-gtee_summary.pdf",width=2.8,height = 2.5)
+
+s %>%  group_by(Condition,Method,replicate,Calibrations,Branch.Type,isconcat,datingMethod,conditionAD) %>%
+  summarise(abserr = mean(abserr)) %>% #, bias= mean(bias),relbias= median(relbias)) %>%
+  group_by(Calibrations,isconcat,datingMethod,Branch.Type) %>%
+  summarise(abserr = mean(abserr)) %>% # ,bias= mean(bias),relbias= mean(relbias)) %>% 
+  pivot_longer(cols=c(abserr)) %>% #,bias,relbias)) %>%
+  pivot_wider(names_from = isconcat,values_from = value) %>%
+  ggplot(aes(color=datingMethod,size=Branch.Type))+
+  scale_y_continuous(trans="identity",name="Mean absolute error\n(branch length)")+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "10"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2.5)/8+(as.numeric(factor(Branch.Type))-1)/1000,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-2.5)/8+(as.numeric(factor(Branch.Type))-1)/1000),
+               arrow = arrow(length = unit(4,'pt')))+
+  scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  #scale_color_viridis_d(end = 0.8,direction = -1,name="")+
+  theme_classic()+
+  scale_size_manual(values = c(1,2)/2,name="",labels=Position.labs)+
+  theme(legend.position =  'right', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         shape='none')
+ggsave("S100-dating_error-methods_summary.pdf",width=5,height = 2.5)
 
 dtemp=dcast(data=s,
             Condition+Method+replicate+Calibrations+Branch.Type+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean)
@@ -1372,10 +1544,10 @@ ggplot(aes(x=as.factor(Calibrations),y=abserr,color=Method),
 #coord_cartesian(ylim=c(0,0.2),xlim=c(1,5),clip="off")
 ggsave("S100-error-perrep_dating_calib_no_OG.pdf",width=7,height =2.5)
 
-dtemp=dcast(data=s,
-            Condition+Method+replicate+Calibrations+Branch.Type+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean)
-dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
-dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod) %>%
+
+dcast(data=s,
+            Condition+Method+replicate+Calibrations+Branch.Type+isconcat+datingMethod~'abserr' ,value.var = "abserr",fun.aggregate = mean) %>%
+  group_by(Condition,Calibrations,isconcat,datingMethod) %>%
   summarise(abserr = mean(abserr)) %>% pivot_wider(names_from = isconcat,values_from = abserr) %>%
   ggplot(aes(color=datingMethod))+
   scale_y_continuous(trans="identity",name="Mean absolute error\n(branch length)")+
@@ -1395,6 +1567,8 @@ dtemp %>% group_by(Condition,Calibrations,isconcat,datingMethod) %>%
          shape='none')
 ggsave("S100-error-perrep_dating_calib-arrow-main.pdf",width=5,height = 2.5)
 
+
+head(s)
 dtemp=dcast(data=s,
             Condition+Method+replicate+Calibrations+Branch.Type+isconcat~'bias' ,value.var = "bias",fun.aggregate = mean)
 dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
@@ -2915,18 +3089,21 @@ m0=read.csv('mvroot_estgt_dating_unit_node_age.csv')
 m3=read.csv('mvroot_estgt_dating_n3_node_age_normalized.csv')
 m5=read.csv('mvroot_estgt_dating_n5_node_age_normalized.csv')
 
+m0$Method = sub("ConBL","Concat(RAxML)",m0$Method)
+
 m0$Calibrations <- 0
 m3$Calibrations <- 3
 m5$Calibrations <- 5
 m <- rbind(m0,m3,m5)
 
 m$outgroup = factor(grepl("outgroup.0", m$Condition))
-s$Method = factor(s$Method, levels=c('LSD+CASTLES-Pro', 'LSD+ConBL', 'wLogDate+CASTLES-Pro', 'wLogDate+ConBL', 'MD-Cat+CASTLES-Pro', 'MD-Cat+ConBL', 'TreePL+CASTLES-Pro', 'TreePL+ConBL'))
+#m$Method = factor(m$Method, levels=c('LSD+CASTLES-Pro', 'LSD+ConBL', 'wLogDate+CASTLES-Pro', 'wLogDate+ConBL', 'MD-Cat+CASTLES-Pro', 'MD-Cat+ConBL', 'TreePL+CASTLES-Pro', 'TreePL+ConBL','MCMCtree'))
+m$Method = factor(m$Method, levels=c('LSD+CASTLES-Pro', 'LSD+Concat(RAxML)', 'wLogDate+CASTLES-Pro', 'wLogDate+Concat(RAxML)', 'MD-Cat+CASTLES-Pro', 'MD-Cat+Concat(RAxML)', 'TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)','MCMCtree'))
 m$ratevar = as.factor(sub(".genes.*","",sub("outgroup.*.species.","",m$Condition)))
 m$ratevar = factor(m$ratevar)
 levels(m$ratevar) = list("0.15" = "High", "1.5" = "Med", "5" = "Low")
 m$outgroup = factor(grepl("outgroup.0", m$Condition))
-#m = m[m$Method!="MCMCtree" & m$Taxon.Type=="internal",]
+#m = m[m$Method!="MCMCtree" ,] #& m$Taxon.Type=="internal",]
 m = m[m$Taxon.Type=="internal",]
 m$isconcat = factor(grepl("Concat", m$Method))
 
@@ -2944,15 +3121,25 @@ m <- m |> mutate(conditionAD = case_when(
   AD >= 0.75 & AD <= 1 ~ '[0.75,1)',
 ))
 
+## Leaves and root should not count towards error. 
+m=m[m$age.true!=0 & m$age.true!=1,]
+
+## Divide into shallow and deep. 1/4 gives roughly the same number of deep and shallow
+Position.labs <- c("Shallow","Deep")
+names(Position.labs) <- c(TRUE, FALSE)
+m$shallow=m$age.true<1/4
+m %>% group_by(shallow) %>% summarise(n=n())
+
+
 ggplot(aes(color=Method, shape=isconcat,y=abserr,x=as.factor(Calibrations)),
        data=merge(
          dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),],
-               outgroup+Method+replicate+ratevar+Calibrations+conditionAD+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean),
+               outgroup+Method+replicate+ratevar+Calibrations+conditionAD+isconcat+shallow~'abserr' ,value.var = "abserr",fun.aggregate = mean),
          dcast(data=m[m$outgroup ==TRUE & m$Method %in% c('TreePL+CASTLES-Pro', 'TreePL+Concat(RAxML)', 'MCMCtree'),], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)))+
   scale_y_continuous(trans="identity",name="Mean absolute error\n(node age)")+
   scale_x_discrete(name="Number of Calibrations",labels=c('0', '3', '5'))+
   stat_summary()+
-  facet_grid(ratevar~conditionAD,,labeller = labeller(ratevar = ratevar.labs))+
+  facet_grid(ratevar~conditionAD,,labeller = labeller(ratevar = ratevar.labs,shallow=Position.labs))+
   stat_summary(aes(group=Method),geom="line")+
   scale_color_manual(values=c("#FDBF6F","#FF7F00", "#6A3D9A"), name="")+
   theme_classic()+
@@ -2964,15 +3151,15 @@ ggsave("MV-abserr-ILS-mcmctree_node_age.pdf",width=5,height = 4.5)
 
 
 dtemp=merge(
-  dcast(data=m[m$outgroup ==TRUE,],
-        outgroup+Method+replicate+Calibrations+Taxon.Type+isconcat+conditionAD~'bias' ,value.var = "bias",fun.aggregate = mean),
-  dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
+  dcast(data=m[m$outgroup ==TRUE & m$Method!="MCMCtree",],
+        outgroup+Method+replicate+Calibrations+Taxon.Type+isconcat+conditionAD+shallow~'bias' ,value.var = "bias",fun.aggregate = mean),
+  dcast(data=m[m$outgroup ==TRUE& m$Method!="MCMCtree",], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
 dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
-dtemp %>% group_by(Calibrations,conditionAD,Taxon.Type,isconcat,datingMethod) %>%
+dtemp %>% group_by(Calibrations,conditionAD,Taxon.Type,isconcat,datingMethod,shallow) %>%
   summarise(bias = mean(bias)) %>% pivot_wider(names_from = isconcat,values_from = bias) %>%
   ggplot(aes(color=datingMethod))+
-  scale_y_continuous(trans="identity",name=expression("Estimated" - "true length (bias)"))+
-  facet_wrap(~conditionAD,ncol=4)+
+  scale_y_continuous(trans="identity",name=expression("Estimated" - "true age (bias)"))+
+  facet_grid(shallow~conditionAD,labeller = labeller(shallow=Position.labs))+
   scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0","3", "5"))+
   geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
                    x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-4)/8,
@@ -2988,7 +3175,7 @@ dtemp %>% group_by(Calibrations,conditionAD,Taxon.Type,isconcat,datingMethod) %>
   guides(color=guide_legend(nrow=1, byrow=TRUE),
          fill=guide_legend(nrow=1, byrow=TRUE),
          shape='none')
-ggsave("MV-bias_dating_bycalib-pro_broken-arrow.pdf",width=6,height = 3.5)
+ggsave("MV-bias_dating_bycalib-pro_broken-arrow.pdf",width=6,height = 4)
 
 
 ggplot(aes(color=Method, y=abserr,x=as.factor(Calibrations),shape=isconcat),
@@ -3071,9 +3258,9 @@ ggplot(aes(color=Method, y=sqrt(se),x=as.factor(Calibrations),shape=isconcat),
 ggsave("MV-node_age_rmse_ratevar-dating_bycalib_line-pro.pdf",width=4.5,height = 2.5)
 
 dtemp=merge(
-  dcast(data=m[m$outgroup ==TRUE,],
+  dcast(data=m[m$outgroup ==TRUE & m$Method!="MCMCtree",],
         outgroup+Method+replicate+Calibrations+Taxon.Type+isconcat+conditionAD~'abserr' ,value.var = "abserr",fun.aggregate = mean),
-  dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
+  dcast(data=m[m$outgroup ==TRUE & m$Method!="MCMCtree",], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
 dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
 dtemp %>% group_by(Calibrations,conditionAD,isconcat,datingMethod) %>%
   summarise(abserr = mean(abserr)) %>% pivot_wider(names_from = isconcat,values_from = abserr) %>%
@@ -3097,9 +3284,9 @@ dtemp %>% group_by(Calibrations,conditionAD,isconcat,datingMethod) %>%
 ggsave("MV-node_age_abserr-dating_bycalib_line-pro_arrow.pdf",width=6,height = 2.5)
 
 dtemp=merge(
-  dcast(data=m[m$outgroup ==TRUE,],
+  dcast(data=m[m$outgroup ==TRUE & m$Method!="MCMCtree",],
         outgroup+Method+replicate+Calibrations+ratevar+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean),
-  dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
+  dcast(data=m[m$outgroup ==TRUE & m$Method!="MCMCtree",], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
 dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
 dtemp %>% group_by(Calibrations,ratevar,isconcat,datingMethod) %>%
   summarise(abserr = mean(abserr)) %>% pivot_wider(names_from = isconcat,values_from = abserr) %>%
@@ -3123,9 +3310,9 @@ ggsave("MV-node_age_abserr_ratevar-dating_bycalib_line-pro_arrow_main.pdf",width
 
 
 dtemp=merge(
-  dcast(data=m[m$outgroup ==TRUE,],
+  dcast(data=m[m$outgroup ==TRUE & m$Method!="MCMCtree",],
         outgroup+Method+replicate+Calibrations+ratevar+isconcat~'se' ,value.var = "se",fun.aggregate = mean),
-  dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
+  dcast(data=m[m$outgroup ==TRUE & m$Method!="MCMCtree",], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
 dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
 dtemp %>% group_by(Calibrations,ratevar,isconcat,datingMethod) %>%
   summarise(rmse = mean(sqrt(se))) %>% pivot_wider(names_from = isconcat,values_from = rmse) %>%
@@ -3148,9 +3335,9 @@ dtemp %>% group_by(Calibrations,ratevar,isconcat,datingMethod) %>%
 ggsave("MV-node_age_rmse_ratevar-dating_bycalib_line-pro_arrow.pdf",width=4.5,height = 2.5)
 
 dtemp=merge(
-  dcast(data=m[m$outgroup ==TRUE,],
+  dcast(data=m[m$outgroup ==TRUE & m$Method!="MCMCtree",],
         outgroup+Method+replicate+Calibrations+isconcat+conditionAD~'se' ,value.var = "se",fun.aggregate = mean),
-  dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
+  dcast(data=m[m$outgroup ==TRUE & m$Method!="MCMCtree",], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
 dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
 dtemp %>% group_by(Calibrations,conditionAD,isconcat,datingMethod) %>%
   summarise(rmse = mean(sqrt(se))) %>% pivot_wider(names_from = isconcat,values_from = rmse) %>%
@@ -3209,15 +3396,15 @@ ggplot(aes(x=as.factor(Calibrations), y=age.est-age.true,color=Method,shape=isco
 ggsave("MV-node-age-bias-ratevar_dating_bycalib-pro.pdf",width=4.5,height = 2.5)
 
 dtemp=merge(
-  dcast(data=m[m$outgroup ==TRUE,],
-        outgroup+Method+replicate+Calibrations+isconcat+conditionAD~'bias' ,value.var = "bias",fun.aggregate = mean),
-  dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
+  dcast(data=m[m$outgroup ==TRUE & m$Method!="MCMCtree",],
+        outgroup+Method+replicate+Calibrations+isconcat+conditionAD+shallow~'bias' ,value.var = "bias",fun.aggregate = mean),
+  dcast(data=m[m$outgroup ==TRUE & m$Method!="MCMCtree",], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
 dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
-dtemp %>% group_by(Calibrations,conditionAD,isconcat,datingMethod) %>%
+dtemp %>% group_by(Calibrations,conditionAD,isconcat,datingMethod,shallow) %>%
   summarise(bias = mean(bias)) %>% pivot_wider(names_from = isconcat,values_from = bias) %>%
   ggplot(aes(color=datingMethod))+
   scale_y_continuous(trans="identity",name=expression("Estimated" - "true length (bias)"))+
-  facet_wrap(~conditionAD,ncol=4)+
+  facet_grid(shallow~conditionAD,labeller = labeller(ratevar = ratevar.labs,shallow=Position.labs))+
   scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "5"))+
   geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
                    x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-4)/8,
@@ -3233,18 +3420,18 @@ dtemp %>% group_by(Calibrations,conditionAD,isconcat,datingMethod) %>%
   guides(color=guide_legend(nrow=1, byrow=TRUE),
          fill=guide_legend(nrow=1, byrow=TRUE),
          shape='none')
-ggsave("MV-node_age_bias_dating_bycalib-pro_broken-arrow.pdf",width=6,height = 2.5)
+ggsave("MV-node_age_bias_dating_bycalib-pro_broken-arrow.pdf",width=6,height = 3.5)
 
 dtemp=merge(
-  dcast(data=m[m$outgroup ==TRUE,],
-        outgroup+Method+replicate+Calibrations+isconcat+ratevar~'bias' ,value.var = "bias",fun.aggregate = mean),
-  dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
+  dcast(data=m[m$outgroup ==TRUE & m$Method!="MCMCtree",],
+        outgroup+Method+replicate+Calibrations+isconcat+ratevar+shallow~'bias' ,value.var = "bias",fun.aggregate = mean),
+  dcast(data=m[m$outgroup ==TRUE & m$Method!="MCMCtree",], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
 dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
-dtemp %>% group_by(Calibrations,ratevar,isconcat,datingMethod) %>%
+dtemp %>% group_by(Calibrations,ratevar,isconcat,datingMethod,shallow) %>%
   summarise(bias = mean(bias)) %>% pivot_wider(names_from = isconcat,values_from = bias) %>%
   ggplot(aes(color=datingMethod))+
-  scale_y_continuous(trans="identity",name=expression("Estimated" - "true length (bias)"))+
-  facet_wrap(~ratevar,ncol=4,labeller = labeller(ratevar = ratevar.labs))+
+  scale_y_continuous(trans="identity",name=expression("Estimated" - "true age (bias)"))+
+  facet_grid(shallow~ratevar,labeller = labeller(ratevar = ratevar.labs,shallow=Position.labs))+
   scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "5"))+
   geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
                    x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(datingMethod))-4)/8,
@@ -3253,11 +3440,95 @@ dtemp %>% group_by(Calibrations,ratevar,isconcat,datingMethod) %>%
   scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
   theme_classic()+
   geom_hline(color="grey50",linetype=1,yintercept = 0)+
-  theme(legend.position =  'none', legend.direction = "horizontal",
+  theme(legend.position =  'bottom', legend.direction = "horizontal",
         legend.box.margin = margin(0), legend.margin = margin(0),
         axis.text.x = element_text(angle=0),
         legend.text=element_text(size=11))+
   guides(color=guide_legend(nrow=1, byrow=TRUE),
          fill=guide_legend(nrow=1, byrow=TRUE),
          shape='none')
-ggsave("MV-node_age_ratevar-bias_dating_bycalib-pro_broken-arrow.pdf",width=4.5,height = 2.5)
+ggsave("MV-node_age_ratevar-bias_dating_bycalib-pro_broken-arrow.pdf",width=4.5,height = 3.5)
+
+m$datingMethod = sub("\\+.*","",m$Method)
+
+concat.labs <- c("ConBL","CoalBL")
+names(concat.labs) <- c(TRUE, FALSE)
+
+merge(m[m$outgroup ==TRUE & m$root.fixed=="True" & m$Taxon.Type=="internal" & m$isconcat==TRUE
+  #& m$Calibrations==3 &m$ratevar==5 & grepl("TreePL",m$Method)
+  ,],
+  m[m$outgroup ==TRUE & m$root.fixed=="True" & m$Taxon.Type=="internal" & m$isconcat==FALSE
+    #& m$Calibrations==3 &m$ratevar==5 & grepl("TreePL",m$Method)
+    ,],by=c(2:4,6:10,12:13,19:21))# %>%
+  #filter(abs(age.true-age.est.y)>0.5)
+
+get_slope <- function(data, x, y) {
+  model <- lm(as.formula(paste(y, "~", x)), data = data)
+  slope <- coef(model)[x]
+  paste("a:", round(slope, 2))
+}
+
+require("ggpmisc")
+ m[m$outgroup ==TRUE & m$root.fixed=="True" & m$Taxon.Type=="internal"&m$datingMethod!="MCMCtree",] %>%
+  ggplot(aes(x=age.true,y=age.est,color=isconcat)) + geom_point(alpha=0.05,size=0.5)+
+  facet_grid(datingMethod+isconcat~ratevar+Calibrations,
+             labeller = labeller(ratevar = ratevar.labs,shallow=Position.labs,isconcat=concat.labs )
+             )+
+  theme_classic()+
+  geom_abline(color="#0070f0",linetype="dashed",size=1)+
+  stat_smooth(se=F,method="lm",color="black")+
+  #scale_color_manual(values=c("#a02010","#40d090"))+
+  scale_color_brewer(palette = "Dark2")+
+  xlab("True node age")+ylab("Esimated node age")+
+   scale_x_continuous(breaks=c(1/4,3/4))+
+   scale_y_continuous(breaks=c(1/4,3/4))+
+   stat_poly_eq(formula = y ~ x,coef.digits = 2,
+                aes(label = sub("\\*.*","",sub(".*\\+ *","",after_stat(eq.label)))),color="black",
+                parse = FALSE)+
+   theme(legend.position = "none")
+ggsave("MV-node_age_ratevar-scatter.png",width=9,height = 8.2)
+
+a=m[m$outgroup ==TRUE & m$root.fixed=="True" & m$Taxon.Type=="internal"&m$datingMethod %in% c("TreePL") &m$Calibrations==3,] %>%
+  ggplot(aes(x=age.true,y=age.est,color=isconcat)) + geom_point(alpha=0.1,size=0.5)+
+  facet_grid(.~ratevar,
+             labeller = labeller(ratevar = ratevar.labs,shallow=Position.labs,isconcat=concat.labs )
+  )+
+  theme_classic()+
+  geom_abline(color="black",linetype="dashed",size=1)+
+  stat_smooth(se=F,method="lm")+
+  #scale_color_manual(values=c("#a02010","#20c0c0"),labels=c("CoalBL","ConBL"),name="")+
+  scale_color_brewer(palette = "Dark2",labels=c("CoalBL","ConBL"),name="TreePL+")+
+  xlab("True node age")+ylab("Esimated node age")+
+  scale_x_continuous(breaks=c(1/4,3/4))+
+  scale_y_continuous(breaks=c(1/4,3/4))+
+  stat_poly_eq(formula = y ~ x,coef.digits = 2,vstep = 0.08,size=3,
+               aes(label = sub(".*=..","",after_stat(eq.label))),
+               parse = TRUE)+
+  theme(legend.position = "right",axis.title.x = element_blank())
+a
+ggsave("MV-node_age_ratevar-scatter-treePL-c3.pdf",width=5,height = 2.5)
+
+b=m[m$outgroup ==TRUE & m$root.fixed=="True" & m$Taxon.Type=="internal"&m$datingMethod=="TreePL" &m$Calibrations==3,] %>%
+  ggplot(aes(x=age.true,y=age.est,color=isconcat)) + geom_point(alpha=0.1,size=0.5)+
+  facet_grid(.~conditionAD,
+             labeller = labeller(ratevar = ratevar.labs,shallow=Position.labs,isconcat=concat.labs )
+  )+
+  theme_classic()+
+  geom_abline(color="black",linetype="dashed",size=1)+
+  stat_smooth(se=F,method="lm")+
+  scale_color_brewer(palette = "Dark2")+
+  xlab("True node age")+ylab("Esimated node age")+
+  scale_x_continuous(breaks=c(1/4,3/4))+
+  scale_y_continuous(breaks=c(1/4,3/4))+
+  stat_poly_eq(formula = y ~ x,coef.digits = 2,vstep = 0.08,size=3,
+               aes(label = sub(".*=..","",after_stat(eq.label))),
+               parse = TRUE)+
+  theme(legend.position = "none")
+b
+ggsave("MV-node_age_add-scatter-treePL-c3.pdf",width=7,height = 2.5)
+
+library(cowplot)
+plot_grid(a, b, labels = c("a)","b)"),ncol=1)
+
+ggsave("MV-node_age-scatter-treePL-c3.pdf",width=6.3,height = 4.6)
+ 
