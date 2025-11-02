@@ -1,6 +1,6 @@
 require(ggplot2);require(reshape2);require(scales);require(ggpubr);require(tidyr);require(ggpattern);require(tidyverse)
 library(tidyr);library(ggh4x)
-## S100 dataset
+require(ggpmisc)
 
 ## time and memory
 t=read.csv('s100_time_n3_treepl.csv')
@@ -343,6 +343,7 @@ s %>%  group_by(Condition,Method,replicate,Calibrations,shallow,isconcat,datingM
          shape='none')
 ggsave("S100-perrep_dating_calib-arrow-treepl_nodeage.pdf",width=6.2,height = 3.5)
 ggsave("S100-perrep_dating_calib-arrow-treepl_nodeage_relativebias.pdf",width=9.15,height = 3.5)
+## Figure 4, node age panels
 
 
 s %>%  group_by(Condition,Method,replicate,Calibrations,shallow,isconcat,datingMethod,conditionAD) %>%
@@ -857,23 +858,6 @@ s %>%
          fill=guide_legend(nrow=3, byrow=TRUE))
 ggsave("S100-dating_error-genes-treepl-summary_gtee.pdf",width=2.8,height = 2.5)
 
-s[s$datingMethod %in% c("TreePL"),] %>%
-  ggplot(aes(x=age.true,y=age.est,color=isconcat)) + geom_point(alpha=0.1,size=0.5)+
-  facet_grid(.~Condition,
-             labeller = labeller(ratevar = ratevar.labs,shallow=Position.labs,isconcat=concat.labs )
-  )+
-  theme_classic()+
-  geom_abline(color="black",linetype="dashed",size=1)+
-  stat_smooth(se=F,method="lm")+
-  #scale_color_manual(values=c("#a02010","#20c0c0"),labels=c("CoalBL","ConBL"),name="")+
-  scale_color_brewer(palette = "Dark2",labels=c("CoalBL","ConBL"),name="TreePL+")+
-  xlab("True node age")+ylab("Esimated node age")+
-  scale_x_continuous(breaks=c(1/4,3/4))+
-  scale_y_continuous(breaks=c(1/4,3/4))+
-  stat_poly_eq(formula = y ~ x,coef.digits = 2,vstep = 0.08,size=3,
-               aes(label = sub(".*=..","",after_stat(eq.label))),
-               parse = TRUE)+
-  theme(legend.position = "right",axis.title.x = element_blank())
 
 ggplot(data=dcast(data=s,Method+replicate+isconcat+genes+Condition~'log10err' ,value.var = "log10err",fun.aggregate = function(x) mean(abs(x))), aes(x=as.factor(genes),y=log10err,color=Method,shape=isconcat))+
   scale_y_continuous(trans="identity",name="Mean log10 error")+
