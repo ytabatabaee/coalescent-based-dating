@@ -8,7 +8,7 @@ For experiments in this study, we generated three sets of simulated datasets wit
 
 ### Simulated datasets
 
-**30-taxon dataset.**
+#### 30-taxon dataset
 This dataset has six model conditions with varying deviation from the molecular clock and inclusion of an outgroup, each with 100 replicates. The model conditions are specified as `outgroup.[has-OG].species.[DEV].genes.[DEV]` where `[has-OG]` is 1 when the dataset has an outgroup and 0 otherwise, and `[DEV]` shows the level of deviation from the clock (parameter α of the gamma distribution) that is set to 5 (low), 1.5 (medium), or 0.15 (high). Original dataset is from [Mai at al. (2017)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0182238) and available at [https://uym2.github.io/MinVar-Rooting/](https://uym2.github.io/MinVar-Rooting/). Below is a description of files in each directory.
 
 - `truegenetrees`: true gene trees
@@ -28,7 +28,7 @@ This dataset has six model conditions with varying deviation from the molecular 
 - `gtee_gtr.txt`: average RF distance between true and estimated gene trees
 
 
-**101-taxon dataset.**
+#### 101-taxon dataset
 This dataset has four model conditions with varying sequence lengths (1600bp, 800bp, 400bp, 200bp) corresponding to different levels of gene tree estimation error (23%, 31%, 42%, and 55%). The original dataset is from [Zhang et. al. (2018)](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2129-y) and available at [https://gitlab.com/esayyari/ASTRALIII/](https://gitlab.com/esayyari/ASTRALIII/). Below is a description of files in each directory.
 
 - `truegenetrees`: true gene trees
@@ -44,7 +44,7 @@ This dataset has four model conditions with varying sequence lengths (1600bp, 80
 - `[dating-method]_n[num-calib]_[root_unfixed]_castlespro_fasttree_genetrees_[seq-len]_non.[num-genes]_s_tree.trees.rooted.labeled.[normalized]`: CASTLES-Pro SU tree dated with [dating-method] (can be treepl, wlogdate, mdcat, and lsd2) with [num-calib] calibration points for the model condition corresponding to [num-genes] genes and [seq-len]bp sequences. The .[normalized] flag specifies the unit-ultrametric version of the dated tree. Trees dated with lsd2 have a `.date.nwk` extension. Files with additional extensions include config files and log files for each method.
 - `[dating-method]_n[num-calib]_[root_unfixed]_RAxML_result.concat_for_fasttree_[seq-len].[num-genes]_s_tree.trees.rooted.labeled.[normalized]`: RAxML SU tree dated with [dating-method] (can be treepl, wlogdate, mdcat, and lsd2) with [num-calib] calibration points for the model condition corresponding to [num-genes] genes and [seq-len]bp sequences. The .[normalized] flag specifies the unit-ultrametric version of the dated tree. Trees dated with lsd2 have a `.date.nwk` extension. Files with additional extensions include config files and log files for each method.
 
-**Large dataset.**
+#### Large dataset
 This dataset has 8 model conditions with 50, 100, 200, 500, 1K, 2K, 5K, and 10K-taxon trees with 20 replicates in each condition. Below is a description of files in each directory `large/[num-taxa]/[rep-num]/` where `[num-taxa]` is the model condition (number of taxa) and `[rep-num]` is the replicate index.
 
 - `truegenetrees`: true gene trees
