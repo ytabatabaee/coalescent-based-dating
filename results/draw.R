@@ -1,6 +1,6 @@
 require(ggplot2);require(reshape2);require(scales);require(ggpubr);require(tidyr);require(ggpattern);require(tidyverse)
 library(tidyr);library(ggh4x)
-require(ggpmisc)
+#require(ggpmisc)
 
 ## time and memory
 t=read.csv('s100_time_n3_treepl.csv')
@@ -82,9 +82,11 @@ levels(t$Condition) = list("200bp" = "fasttree_genetrees_200_non",
                            "true gene trees" = "truegenetrees")
 t$Step=factor(t$Step,levels=c("Dating", "Branch length estimation"))
 t$genes =  factor(t$genes)
+t$Method[t$Method == "TreePL+CASTLES-Pro"] <- "TreePL+CoalBL"
+t$Method[t$Method == "TreePL+Concat(RAxML)"] <- "TreePL+ConBL"
 
 g=50
-mean(t[t$Step=='Dating' & t$Method=='TreePL+CASTLES-Pro' & t$genes==g,]$time_s/60)/(mean(t[t$Step=='Dating' & t$Method=='TreePL+CASTLES-Pro' & t$genes==g,]$time_s/60)+mean(t[t$Step=='Branch length estimation' & t$Method=='TreePL+CASTLES-Pro'& t$genes==g,]$time_s/60))
+mean(t[t$Step=='Dating' & t$Method=='TreePL+CoalBL' & t$genes==g,]$time_s/60)/(mean(t[t$Step=='Dating' & t$Method=='TreePL+CoalBL' & t$genes==g,]$time_s/60)+mean(t[t$Step=='Branch length estimation' & t$Method=='TreePL+CoalBL'& t$genes==g,]$time_s/60))
 
 ggplot(aes(x=genes,y=time_s/60,fill=Step),
        data=t)+
@@ -92,7 +94,7 @@ ggplot(aes(x=genes,y=time_s/60,fill=Step),
   #stat_summary()+
   geom_bar(stat = "summary", fun.y = "mean")+
   facet_grid(Method~Condition,scales="free")+
-  scale_fill_manual(values=c("#5F9EA0", "#E1B378"))+
+  scale_fill_manual(values=c("#5F9EA0", "#ffaed7"))+
   scale_y_continuous(name="Running time (minutes)" )+
   theme_classic()+
   theme(legend.position = "none", legend.direction = "horizontal",)+
@@ -105,7 +107,7 @@ ggplot(aes(x=genes,y=mem_gb,fill=Step),
        data=t)+
   geom_bar(stat = "summary", fun.y = "mean")+
   facet_grid(Method~Condition,,scales="free")+
-  scale_fill_manual(values=c("#5F9EA0", "#E1B378"))+
+  scale_fill_manual(values=c("#5F9EA0", "#ffaed7"))+
   scale_y_continuous(name="Peak memory usage (GB)" )+
   theme_classic()+
   theme(legend.position = "none", legend.direction = "horizontal",
@@ -122,7 +124,7 @@ ggplot(aes(x=genes,y=time_s/60,fill=Step),
   #stat_summary()+
   geom_bar(stat = "summary", fun.y = "mean")+
   facet_grid(Method~Condition)+
-  scale_fill_manual(values=c("#5F9EA0", "#E1B378"))+
+  scale_fill_manual(values=c("#5F9EA0", "#ffaed7"))+
   scale_y_continuous(name="Running time (minutes)" )+
   theme_classic()+
   theme(legend.position = "bottom", legend.direction = "horizontal",)+
@@ -168,6 +170,7 @@ ggsave("treepl-mem-large.pdf",width=3.5,height=2.5)
 
 t=read.csv('large_time_treepl_step.csv')
 t$Step=factor(t$Step,levels=c("Dating", "Branch length estimation"))
+t$Method[t$Method == "TreePL+CASTLES-Pro"] <- "TreePL+CoalBL"
 
 mean(t[t$Step=='Dating' & t$Condition==10000,]$time_s/60)/(mean(t[t$Step=='Dating' & t$Condition==10000,]$time_s/60)+mean(t[t$Step=='Branch length estimation' & t$Condition==10000,]$time_s/60))
 mean(t[t$Step=='Dating' & t$Condition==5000,]$time_s/60)/(mean(t[t$Step=='Dating' & t$Condition==5000,]$time_s/60)+mean(t[t$Step=='Branch length estimation' & t$Condition==5000,]$time_s/60))
@@ -179,7 +182,7 @@ ggplot(aes(x=as.factor(Condition),y=time_s/60,fill=Step),
   #stat_summary()+
   geom_bar(stat = "summary", fun.y = "mean")+
   facet_wrap(~Method,ncol=1,scales = 'free_y')+
-  scale_fill_manual(values=c("#5F9EA0", "#E1B378"))+
+  scale_fill_manual(values=c("#5F9EA0", "#ffaed7"))+
   scale_y_continuous(name="Running time (minutes)" )+
   theme_classic()+
   theme(legend.position = "none", legend.direction = "horizontal",)+
@@ -192,7 +195,7 @@ ggplot(aes(x=as.factor(Condition),y=mem_gb,fill=Step),
        data=t)+
   geom_bar(stat = "summary", fun.y = "mean")+
   facet_wrap(~Method,ncol=1,scales = 'free_y')+
-  scale_fill_manual(values=c("#5F9EA0", "#E1B378"))+
+  scale_fill_manual(values=c("#5F9EA0", "#ffaed7"))+
   scale_y_continuous(name="Peak memory usage (GB)" )+
   theme_classic()+
   theme(legend.position = "none", legend.direction = "horizontal",
@@ -1814,7 +1817,8 @@ ggsave("S100-rmse-perrep_dating.pdf",width=7,height = 5)
 
 m=read.csv('mvroot_estgt_dating_tmrca_ingroup.csv')
 m$outgroup = factor(grepl("outgroup.1", m$Condition))
-m$Method = factor(m$Method, levels=c('LSD+CASTLES-Pro', 'LSD+ConBL', 'wLogDate+CASTLES-Pro', 'wLogDate+ConBL', 'MD-Cat+CASTLES-Pro', 'MD-Cat+ConBL', 'TreePL+CASTLES-Pro', 'TreePL+ConBL', 'MCMCtree'))
+m$Method <- gsub("CASTLES-Pro", "CoalBL", m$Method)
+m$Method = factor(m$Method, levels=c('LSD+CoalBL', 'LSD+ConBL', 'wLogDate+CoalBL', 'wLogDate+ConBL', 'MD-Cat+CoalBL', 'MD-Cat+ConBL', 'TreePL+CoalBL', 'TreePL+ConBL', 'MCMCtree'))
 #m = m[m$Method!="MCMCtree",]
 m$ratevar = factor(sub(".genes.*","",sub("outgroup.*.species.","",m$Condition)))
 m$isconcat = factor(grepl("ConBL", m$Method))
@@ -1917,7 +1921,9 @@ ggsave("MV-tmrca_dating_calib_ratevar_ingroup.pdf",width=8,height = 4.5)
 
 m=read.csv('mvroot_estgt_dating_treeness.csv')
 m$outgroup = factor(grepl("outgroup.1", m$Condition))
-m$Method = factor(m$Method, levels=c('LSD+CASTLES-Pro', 'LSD+ConBL', 'wLogDate+CASTLES-Pro', 'wLogDate+ConBL', 'MD-Cat+CASTLES-Pro', 'MD-Cat+ConBL', 'TreePL+CASTLES-Pro', 'TreePL+ConBL', 'MCMCtree'))
+m$Method <- gsub("CASTLES-Pro", "CoalBL", m$Method)
+
+m$Method = factor(m$Method, levels=c('LSD+CoalBL', 'LSD+ConBL', 'wLogDate+CoalBL', 'wLogDate+ConBL', 'MD-Cat+CoalBL', 'MD-Cat+ConBL', 'TreePL+CoalBL', 'TreePL+ConBL', 'MCMCtree'))
 m$ratevar = factor(sub(".genes.*","",sub("outgroup.*.species.","",m$Condition)))
 m$isconcat = factor(grepl("ConBL", m$Method))
 m$log10err = log10(m$l.est / m$l.true )
@@ -2332,6 +2338,9 @@ ggplot(aes(x=as.factor(Calibrations), y=l.est-l.true,color=Method,shape=isconcat
   geom_hline(color="grey50",linetype=1,yintercept = 0)+
   guides(color=guide_legend(nrow=2, byrow=TRUE),shape="none")
 ggsave("MV-bias-ratevar_dating_bycalib-pro.pdf",width=4.5,height = 3.5)
+
+m$Method <- gsub("CASTLES-Pro", "CoalBL", m$Method)
+m$Method = factor(m$Method, levels=c('LSD+CoalBL', 'LSD+ConBL', 'wLogDate+CoalBL', 'wLogDate+ConBL', 'MD-Cat+CoalBL', 'MD-Cat+ConBL', 'TreePL+CoalBL', 'TreePL+ConBL', 'MCMCtree'))
 
 ggplot(aes(x=as.factor(Calibrations), y=l.est-l.true,color=Method,shape=isconcat),
        data=m[m$outgroup ==TRUE,])+
