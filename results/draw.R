@@ -1,6 +1,6 @@
 require(ggplot2);require(reshape2);require(scales);require(ggpubr);require(tidyr);require(ggpattern);require(tidyverse)
 library(tidyr);library(ggh4x)
-#require(ggpmisc)
+require(ggpmisc)
 
 ## time and memory
 t=read.csv('s100_time_n3_treepl.csv')
@@ -830,7 +830,8 @@ s %>%
   stat_summary()+
   stat_summary(geom="line")+
   scale_x_continuous(breaks = c(50,200,500,1000),name="gene count")+
-  scale_color_brewer(palette = "Dark2",name = "TreePL+",labels=c("CoalBL","ConBL"))+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00"), name = "TreePL+",labels=c("CoalBL","ConBL"))+
+  #scale_color_brewer(palette = "Dark2",name = "TreePL+",labels=c("CoalBL","ConBL"))+
   theme_classic()+
   scale_size_manual(values = c(1,2)/2,name="")+
   scale_shape(name="")+
@@ -850,7 +851,8 @@ s %>%
   scale_y_continuous(trans="identity",name="Mean absolute error\n(branch length)")+
   stat_summary()+
   stat_summary(aes(group=interaction(Branch.Type,isconcat)),geom="line")+
-  scale_color_brewer(palette = "Dark2",name = "TreePL+",labels=c("CoalBL","ConBL"))+
+  #scale_color_brewer(palette = "Dark2",name = "TreePL+",labels=c("CoalBL","ConBL"))+
+  scale_color_manual(values=c("#FDBF6F","#FF7F00"), name = "TreePL+",labels=c("CoalBL","ConBL"))+
   theme_classic()+
   scale_size_manual(values = c(1,2)/2,name="")+
   scale_shape(name="")+
