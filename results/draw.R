@@ -113,7 +113,6 @@ summary_t$genes <- as.numeric(as.character(summary_t$genes))
 
 slope_labels <- summary_t %>%
   group_by(Condition, Method, Step) %>%
-  # Filter out groups with < 2 points (lm needs at least 2)
   filter(n() >= 2) %>%
   summarise(
     model = list(lm(log10(median_runtime) ~ log10(genes))),
@@ -121,15 +120,11 @@ slope_labels <- summary_t %>%
   ) %>%
   mutate(
     tidied = map(model, tidy),
-    # Get intercept (b) and slope (m)
     intercept = map_dbl(tidied, ~ .x$estimate[.x$term == "(Intercept)"]),
     slope = map_dbl(tidied, ~ .x$estimate[.x$term == "log10(genes)"])
   ) %>%
-  # 2. Determine where to place the text on the plot
   mutate(
-    # Set x at the maximum gene count
     x_pos = max(summary_t$genes, na.rm = TRUE),
-    # Calculate y using the power law: y = 10^(m * log10(x) + b)
     y_pos = 10^(slope * log10(x_pos) + intercept),
     label = paste0("m = ", round(slope, 2))
   )
