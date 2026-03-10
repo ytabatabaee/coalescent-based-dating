@@ -135,6 +135,106 @@ ggplot(summary_df,aes(x=factor(Calibrations), y=prop, fill=inside)) +
 ggsave("mvroot_mu_rates_CI_summary.pdf",width=4, height=4)
 
 
+param <- "bl"   # change to "bl" if plotting branch length coverage
+
+lower <- paste0(param, "_lower")
+upper <- paste0(param, "_upper")
+truev <- paste0(param, "_true")
+
+df_cov <- m %>%
+  filter(!is.na(.data[[truev]]),
+         !is.na(.data[[lower]]),
+         !is.na(.data[[upper]])) %>%
+  mutate(
+    ci_lower = pmin(.data[[lower]], .data[[upper]]),
+    ci_upper = pmax(.data[[lower]], .data[[upper]]),
+    true_in_ci = (.data[[truev]] >= ci_lower &
+                    .data[[truev]] <= ci_upper)
+  ) %>%
+  group_by(Method, Calibrations, ADbin, ratevar) %>%
+  summarise(
+    coverage = mean(true_in_ci),
+    .groups = "drop"
+  )
+
+avg_cov <- df_cov %>%
+  group_by(Method, ADbin, ratevar) %>%
+  summarise(avg = mean(coverage), .groups = "drop")
+
+ggplot(df_cov,
+       aes(x = factor(Calibrations),
+           y = coverage,
+           fill = Method, color=Method)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  geom_hline(data = avg_cov,
+             aes(yintercept = avg, color = Method),
+             linetype = "dashed",
+             linewidth = 0.8) +
+  scale_y_continuous(labels=scales::percent) +
+  facet_grid(ratevar ~ ADbin,labeller = labeller(ratevar = ratevar.labs)) +
+  labs(
+    x = "Number of calibrations",
+    y = "Proportion of true branch lengths inside 95% CIs",
+    color = "Pipeline"
+  ) +
+  scale_fill_manual(
+    values=c("#9bd7db", "#ebb6d3")) +
+  scale_color_manual(
+    values=c("#3b9da3", "#ce4993")) +
+  theme_classic()+
+  theme(legend.position="none")
+ggsave("CI_branches_true_coverage.pdf", width = 5, height = 5)
+
+
+ggplot(df_cov,
+       aes(x = factor(Calibrations),
+           y = coverage,
+           fill = Method, color=Method)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  geom_hline(data = avg_cov,
+             aes(yintercept = avg, color = Method),
+             linetype = "dashed",
+             linewidth = 0.8) +
+  scale_y_continuous(labels=scales::percent) +
+  facet_grid(ratevar ~ ADbin,labeller = labeller(ratevar = ratevar.labs)) +
+  labs(
+    x = "Number of calibrations",
+    y = "Proportion of true node ages inside 95% CIs",
+    color = "Pipeline"
+  ) +
+  scale_fill_manual(
+    values=c("#9bd7db", "#ebb6d3")) +
+  scale_color_manual(
+    values=c("#3b9da3", "#ce4993")) +
+  theme_classic()+
+  theme(legend.position="none")
+ggsave("CI_node_ages_true_coverage.pdf", width = 5, height = 5)
+
+ggplot(df_cov,
+       aes(x = factor(Calibrations),
+           y = coverage,
+           fill = Method, color=Method)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  geom_hline(data = avg_cov,
+             aes(yintercept = avg, color = Method),
+             linetype = "dashed",
+             linewidth = 0.8) +
+  scale_y_continuous(limits=c(0,1), labels=scales::percent) +
+  facet_grid(ratevar ~ ADbin,labeller = labeller(ratevar = ratevar.labs)) +
+  labs(
+    x = "Number of calibrations",
+    y = "Proportion of true branch lengths inside 95% CIs",
+    color = "Pipeline"
+  ) +
+  scale_fill_manual(
+    values=c("#9bd7db", "#ebb6d3")) +
+  scale_color_manual(
+    values=c("#3b9da3", "#ce4993")) +
+  theme_classic()+
+  theme(legend.position="bottom")
+ggsave("CI_true_legend.pdf", width = 10, height = 5)
+
+
 
 
 
