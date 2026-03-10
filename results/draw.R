@@ -260,13 +260,14 @@ ggsave("treepl-time_broken_large.pdf",width=3.5,height=4.5)
 summary_t <- t %>%
   group_by(Condition, Method, Step) %>%
   summarize(median_runtime = median(time_s/60),
+            mean_runtime = mean(time_s/60),
             median_mem = median(mem_gb),.groups="drop")
 
 slope_labels <- summary_t %>%
   group_by(Method, Step) %>%
   filter(n() >= 2) %>%
   summarise(
-    model = list(lm(log10(median_mem) ~ log10(Condition))),
+    model = list(lm(log10(median_runtime) ~ log10(Condition))),
     .groups = "drop"
   ) %>%
   mutate(
@@ -275,21 +276,25 @@ slope_labels <- summary_t %>%
     slope = map_dbl(tidied, ~ .x$estimate[.x$term == "log10(Condition)"])
   ) %>%
   mutate(
-    x_pos = max(summary_t$Condition, na.rm = TRUE),
-    y_pos = 10^(slope * log10(x_pos) + intercept),
-    label = paste0("m = ", round(slope, 2))
+    x_pos = 2000,#max(summary_t$Condition, na.rm = TRUE),
+    y_pos = 10^(slope * log10(x_pos) +(intercept)),
+    label = paste0("", round(slope, 1))
   )
 
 ggplot(aes(x=Condition,y=median_runtime, linetype=Step, color=Method, group = interaction(Method, Step)),
        data=summary_t)+
+  geom_point(position = position_jitter(width=0.025,height = 0), alpha=0.5,size=1,
+             aes(x=Condition,y=time_s/60, shape=Step, color=Method, group = interaction(Method, Step,Condition)),
+             data=t) +
   #geom_line() +
-  geom_point() +
+  #geom_point() +
   stat_smooth(method="lm",se=F, linewidth=0.8)+
   scale_color_manual(values=c("#FDBF6F", "#FF7F00"))+
   scale_y_log10(name="Running time (minutes)" )+
   geom_text(data = slope_labels, 
-            aes(x = x_pos, y = y_pos, label = label),
-            hjust = 3, vjust = 8.5, size = 3, show.legend = FALSE) +
+            aes(x = x_pos, y = y_pos, label = label),color="grey20",
+            vjust = +1,
+            size = 3, show.legend = FALSE) +
   theme_classic()+
   theme(legend.position = "none", legend.direction = "horizontal",)+
   scale_x_log10(name="Number of taxa",breaks = summary_t$Condition,  # show all values
@@ -298,19 +303,34 @@ ggplot(aes(x=Condition,y=median_runtime, linetype=Step, color=Method, group = in
          linetype=guide_legend(nrow=2, byrow=TRUE))
 ggsave("treepl-time_large_steps_median.pdf",width=3.5,height=2.5)
 
-ggplot(aes(x=Condition,y=mean_runtime, linetype=Step, color=Method, group = interaction(Method, Step)),
+
+ggplot(aes(x=Condition,y=median_runtime, linetype=Step, shape=Step, color=Method, group = interaction(Method, Step)),
        data=summary_t)+
   geom_line() +
   geom_point() +
-  scale_color_manual(values=c("#FDBF6F", "#FF7F00"))+
+  scale_color_manual(values=c("#FDBF6F", "#FF7F00"),name="SU Length\nmethod",labels=c("CoalBL","ConBL"))+
+  scale_linetype(lables=c("Dating","SU Length"))+
+  scale_shape(lables=c("Dating","SU Length"))+
   scale_y_log10(name="Running time (minutes)" )+
+  theme_classic()+
+  theme(legend.position = "right")+
+  scale_x_log10(name="Number of taxa",breaks = summary_t$Condition,  # show all values
+                labels = summary_t$Condition )+
+  guides(color=guide_legend(nrow=2, byrow=TRUE),
+         linetype=guide_legend(nrow=2, byrow=TRUE))
+ggsave("legend_treepl_steps.pdf",width=6,height=3.5)
+
+ggplot(aes(x=Condition,y=time_s/60, shape=Step, color=Method, group = interaction(Method, Step,Condition)),
+       data=t)+
+  geom_point(position = position_jitter(width=0.04,height = 0)) +
+  scale_color_manual(values=c("#FDBF6F", "#FF7F00"))+
+  scale_y_continuous(name="Running time (minutes)" ,trans="log10")+
   theme_classic()+
   theme(legend.position = "bottom", legend.direction = "horizontal",)+
   scale_x_log10(name="Number of taxa",breaks = summary_t$Condition,  # show all values
                 labels = summary_t$Condition )+
   guides(color=guide_legend(nrow=2, byrow=TRUE),
          linetype=guide_legend(nrow=2, byrow=TRUE))
-ggsave("legend_treepl_steps.pdf",width=6,height=3.5)
 
 ggplot(aes(x=as.factor(Condition),y=mem_gb,fill=Step),
        data=t)+
@@ -327,16 +347,36 @@ ggplot(aes(x=as.factor(Condition),y=mem_gb,fill=Step),
          linetype=guide_legend(nrow=2, byrow=TRUE))
 ggsave("treepl-mem_broken_large.pdf",width=3.5,height =4.5)
 
+slope_labels <- summary_t %>%
+  group_by(Method, Step) %>%
+  filter(n() >= 2) %>%
+  summarise(
+    model = list(lm(log10(median_mem) ~ log10(Condition))),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    tidied = map(model, tidy),
+    intercept = map_dbl(tidied, ~ .x$estimate[.x$term == "(Intercept)"]),
+    slope = map_dbl(tidied, ~ .x$estimate[.x$term == "log10(Condition)"])
+  ) %>%
+  mutate(
+    x_pos = 2000,#max(summary_t$Condition, na.rm = TRUE),
+    y_pos = 10^(slope * log10(x_pos) +(intercept)-0.1),
+    label = paste0("", round(slope, 1))
+  )
+
 ggplot(aes(x=Condition,y=median_mem, linetype=Step, color=Method, group = interaction(Method, Step)),
        data=summary_t)+
-  #geom_line() +
+  geom_point(position = position_jitter(width=0.025,height = 0), alpha=0.5,size=1,
+             aes(x=Condition,y=mem_gb, shape=Step, color=Method, group = interaction(Method, Step,Condition)),
+             data=t) +
   geom_point() +
   stat_smooth(method="lm",se=F, linewidth=0.8)+
   scale_color_manual(values=c("#FDBF6F", "#FF7F00"))+
   scale_y_log10(name="Peak memory usage (GB)",limits = c(NA, 1000))+
   geom_text(data = slope_labels, 
-            aes(x = x_pos-0.1, y = y_pos+0.2, label = label),
-            hjust = 3, vjust = 3, size = 3, show.legend = FALSE) +
+            aes(x = x_pos-0.1, y = y_pos+0.2, label = label),color="grey20",
+             size = 3, show.legend = FALSE) +
   theme_classic()+
   theme(legend.position = "none", legend.direction = "horizontal",)+
   scale_x_log10(name="Number of taxa",breaks = summary_t$Condition,  # show all values
