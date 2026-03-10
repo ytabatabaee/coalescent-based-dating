@@ -3,34 +3,37 @@ library(tidyr)
 
 corr=read.csv('treepl_castles_caml_corr.csv')
 
-ggplot(aes(x=l1,y=l2,color=Branch.Type),data=corr)+
+a1 = ggplot(aes(x=l1,y=l2,color=Branch.Type),data=corr)+
   geom_point(alpha=0.09)+
-  scale_x_continuous(trans="log10",name="Branch length (CASTLES-Pro)")+
+  scale_x_continuous(trans="log10",name="Branch length (CoalBL)")+
   scale_y_continuous(trans="log10",name="Branch length (ConBL)")+
-  facet_wrap(~Topology,ncol=4)+
+  facet_wrap(~Topology,ncol=4,label=label_both)+
   stat_smooth(se=F,method="glm",formula=y ~ poly(x, 2))+
   scale_color_brewer(palette = "Dark2")+
+  scale_color_manual(values=c("#cc0000","#3399ff"),name="")+
   geom_abline(color="black",linetype=2)+
   coord_cartesian(xlim=c(10^-3,100),ylim=c(10^-3,100))+
   theme_classic()+
-  theme(legend.position = c(.92,.25)) + 
+  theme(legend.position = c(.92,.25),legend.text = element_text(size = 13)) + 
   guides(colour = guide_legend(override.aes = list(alpha = 1)))
+a1
 ggsave("suboscines_treepl_corr_main.pdf",width=6,height = 3)
 
 corr=read.csv('node_age_corr.csv')
 
-ggplot(aes(x=l1,y=l2,color=Node.Type),data=corr)+
-  geom_point(alpha=0.1)+
-  scale_x_continuous(trans="log10",name="Node age (CASTLES-Pro)")+
+a2 = ggplot(aes(x=l1,y=l2),data=corr)+
+  geom_point(alpha=0.1,color="grey50")+
+  scale_x_continuous(trans="log10",name="Node age (CoalBL)")+
   scale_y_continuous(trans="log10",name="Node age (ConBL)")+
-  facet_wrap(~Topology,ncol=4)+
-  stat_smooth(se=F,method="glm",formula=y ~ poly(x, 2))+
-  scale_color_brewer(palette = "Dark2")+
+  facet_wrap(~Topology,ncol=4,label=label_both)+
+  stat_smooth(se=F,method="glm",formula=y ~ poly(x, 2),color="grey20")+
+  #scale_color_brewer(palette = "Dark2")+
   geom_abline(color="black",linetype=2)+
   coord_cartesian(xlim=c(10^-2.3,100),ylim=c(10^-2.3,100))+
   theme_classic()+
   theme(legend.position = 'none') + 
   guides(colour = guide_legend(override.aes = list(alpha = 1)))
+a2
 ggsave("suboscines_treepl_node_age_corr_main.pdf",width=6,height = 3)
 
 corr=read.csv('treepl_castles_caml_corr.csv')
@@ -238,5 +241,21 @@ class(trees)<-"multiPhylo"
 ltt(trees,log=TRUE)#,xlim=c(60,65))
 
 #ltt(tree2,log=TRUE,plot=TRUE)#,xlim=c(60,65))
+
+a=ggarrange(a1,a2,ncol=2,widths = c(0.5,0.5))
+
+
+library(pdftools)
+library(cowplot)
+library(magick)
+bc=ggplot() +
+  theme_void() +
+  coord_cartesian(xlim = c(0.4, 0.6), ylim = c(0.02, .96))+
+  draw_image(image_read_pdf('Fig7bc.pdf',density=500))
+bc
+
+ggarrange( a, bc, ncol = 1, widths = c(1,1))
+
+ggsave("Fig7.pdf",width=9,height = 7.2)
 
 

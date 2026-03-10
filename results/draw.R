@@ -371,15 +371,15 @@ s %>%  group_by(Condition,Method,replicate,Calibrations,shallow,isconcat,datingM
          fill=guide_legend(nrow=3, byrow=TRUE),
          shape='none')
 
-s[s$Taxon.Type=="internal"&s$datingMethod %in% c("TreePL"),] %>%
+s[s$Taxon.Type=="internal",] %>%
   ggplot(aes(x=age.true,y=age.est,color=isconcat)) + geom_point(alpha=0.05,size=0.1)+
-  facet_grid(.~Calibrations,           labeller = label_both  )+
+  facet_grid(datingMethod~Calibrations )+
   theme_classic()+
   geom_abline(color="black",linetype="dashed",size=1)+
   stat_smooth(se=F,method="lm",alpha=0.8)+
   #scale_color_manual(values=c("#a02010","#20c0c0"),labels=c("CoalBL","ConBL"),name="")+
   scale_color_brewer(palette = "Dark2",labels=c("CoalBL","ConBL"),name="TreePL+")+
-  xlab("True node age")+ylab("Esimated node age")+
+  xlab("True node age")+ylab("Estimated node age")+
   #scale_x_continuous(breaks=c(1/4,3/4))+
   #scale_y_continuous(breaks=c(1/4,3/4))+
   coord_cartesian(xlim=c(0,0.5),ylim=c(0,0.75))+
@@ -387,7 +387,7 @@ s[s$Taxon.Type=="internal"&s$datingMethod %in% c("TreePL"),] %>%
                aes(label = sub(".*=..","",after_stat(eq.label))),
                parse = TRUE)+
   theme(legend.position = "none")
-ggsave("S100-node-age_scatter_all.pdf",width=7.5,height = 3.5)
+ggsave("S100-node-age_scatter_all.png",width=5.5,height = 6.2)
 
 
 dtemp=dcast(data=s,
@@ -2243,6 +2243,82 @@ dtemp %>% group_by(Calibrations,conditionAD,Branch.Type,isconcat,datingMethod) %
          shape='none')
 ggsave("MV-bias_dating_bycalib-pro_broken.pdf",width=10,height = 4)
 
+
+dtemp %>% group_by(Calibrations,conditionAD,Branch.Type,isconcat,datingMethod) %>%
+  summarise(bias = mean(bias)) %>% pivot_wider(names_from = isconcat,values_from = bias) %>%
+  #filter(datingMethod=="TreePL") %>%
+  ggplot(aes(color=conditionAD,size=Branch.Type))+
+  scale_y_continuous(trans="identity",name=expression(atop("Estimated" - "true length (bias)", paste("(time-unit branch length)"))))+
+  facet_grid(.~datingMethod)+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "5"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(conditionAD))-2.5)/8+(as.numeric(factor(Branch.Type))-1)/16,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(conditionAD))-2.5)/8+(as.numeric(factor(Branch.Type))-1)/16),
+               arrow = arrow(length = unit(4,'pt')))+
+  #scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  scale_color_viridis_d(end = 0.8,direction = -1,name="")+
+  scale_size_manual(values = c(1,2)/2,name="",labels=Position.labs)+
+  theme_classic()+
+  geom_hline(color="grey50",linetype=1,yintercept = 0)+
+  theme(legend.position =  "none", legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0),
+        legend.text=element_text(size=11))+
+  guides(color=guide_legend(nrow=1, byrow=TRUE),
+         fill=guide_legend(nrow=1, byrow=TRUE),
+         shape='none')
+ggsave("MV-bias_dating_bycalib-pro_broken_altarrow.pdf",width=11,height = 3.5)
+
+dtemp=merge(
+  dcast(data=m[m$outgroup ==TRUE,],
+        outgroup+Method+replicate+Calibrations+Branch.Type+isconcat+conditionAD~'abserr' ,value.var = "abserr",fun.aggregate = mean),
+  dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
+dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
+dtemp %>% group_by(Calibrations,conditionAD,isconcat,datingMethod,Branch.Type) %>%
+  summarise(abserr = mean(abserr)) %>% pivot_wider(names_from = isconcat,values_from = abserr) %>%
+  ggplot(aes(color=conditionAD,size=Branch.Type))+
+  #scale_y_continuous(trans="identity",name="Mean absolute error")+
+  scale_y_continuous(trans="identity",name=expression(atop("Mean absolute error", paste("(time-unit branch length)"))))+
+  facet_grid(.~datingMethod)+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "5"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(conditionAD))-2.5)/8+(as.numeric(factor(Branch.Type))-1)/16,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(conditionAD))-2.5)/8+(as.numeric(factor(Branch.Type))-1)/16),
+               arrow = arrow(length = unit(4,'pt')))+
+  #scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  scale_color_viridis_d(end = 0.8,direction = -1,name="")+
+  scale_size_manual(values = c(1,2)/2,name="",labels=Position.labs)+
+  theme_classic()+
+  theme(legend.position =  "top", legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0),
+        legend.text=element_text(size=11))+
+  guides(color=guide_legend(nrow=1, byrow=TRUE),
+         fill=guide_legend(nrow=1, byrow=TRUE),
+         shape='none')
+ggsave("MV-bias_dating_bycalib-pro_broken_newarrow.pdf",width=6.4,height = 3)
+
+  
+  
+ggplot(aes(color=Condition,size=shallow))+
+  scale_y_continuous(trans="identity",name="Node age metrics")+
+  facet_wrap(~name,ncol=4,scales="free_y",labeller = labeller(name = c(bias=("Estimated − true (bias)"),relbias=("Estimated/true − 1 (relative bias)"),abserr="Mean absolute error")))+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "10"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(Condition))-2.5)/8+(as.numeric(factor(shallow))-1)/16,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(Condition))-2.5)/8+(as.numeric(factor(shallow))-1)/16),
+               arrow = arrow(length = unit(4,'pt')))+
+  #scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  scale_color_viridis_d(end = 0.8,direction = -1,name="")+
+  theme_classic()+
+  scale_size_manual(values = c(1,2)/2,name="",labels=Position.labs)+
+  theme(legend.position =  'bottom', legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0))+
+  guides(color=guide_legend(nrow=3, byrow=TRUE),
+         fill=guide_legend(nrow=3, byrow=TRUE),
+         shape='none')
+
 dtemp=merge(
   dcast(data=m[m$outgroup ==TRUE,],
         outgroup+Method+replicate+Calibrations+Branch.Type+isconcat+conditionAD~'bias' ,value.var = "bias",fun.aggregate = mean),
@@ -2456,6 +2532,35 @@ dtemp %>% group_by(Calibrations,ratevar,isconcat,datingMethod) %>%
          fill=guide_legend(nrow=3, byrow=TRUE),
          shape='none')
 ggsave("MV-abserr_ratevar-dating_bycalib_line-pro_arrow.pdf",width=4.5,height = 2.5)
+
+dtemp=merge(
+  dcast(data=m[m$outgroup ==TRUE,],
+        outgroup+Method+replicate+Calibrations+Branch.Type+ratevar+isconcat~'abserr' ,value.var = "abserr",fun.aggregate = mean),
+  dcast(data=m[m$outgroup ==TRUE,], outgroup+replicate~'AD' ,value.var = "AD",fun.aggregate = mean)) 
+dtemp$datingMethod = sub("\\+.*","",dtemp$Method)
+dtemp %>% group_by(Calibrations,ratevar,isconcat,datingMethod,Branch.Type) %>%
+  summarise(abserr = mean(abserr)) %>% pivot_wider(names_from = isconcat,values_from = abserr) %>%
+ggplot(aes(color=ratevar,size=Branch.Type))+
+  scale_y_continuous(trans="identity",name=expression(atop("Mean absolute error", paste("(time-unit branch length)"))))+
+  facet_grid(.~datingMethod)+
+  scale_x_continuous(name="Number of Calibrations",breaks = c(1, 2, 3),label = c("0", "3", "5"))+
+  geom_segment(aes(yend=`FALSE`,                   y=`TRUE`,
+                   x=(as.numeric(factor(Calibrations)))+(as.numeric(factor(ratevar))-2.5)/8+(as.numeric(factor(Branch.Type))-1)/16,
+                   xend=(as.numeric(factor(Calibrations)))+(as.numeric(factor(ratevar))-2.5)/8+(as.numeric(factor(Branch.Type))-1)/16),
+               arrow = arrow(length = unit(4,'pt')))+
+  #scale_color_manual(values=c("#1F78B4","#E31A1C", "#FF7F00", "#33A02C"), name="")+
+  scale_color_viridis_d(end = 0.91,direction = -1,name="",option = "E")+
+  scale_size_manual(values = c(1,2)/2,name="",labels=Position.labs)+
+  theme_classic()+
+  theme(legend.position =  "top", legend.direction = "horizontal",
+        legend.box.margin = margin(0), legend.margin = margin(0),
+        axis.text.x = element_text(angle=0),
+        legend.text=element_text(size=11))+
+  guides(color=guide_legend(nrow=1, byrow=TRUE),
+         fill=guide_legend(nrow=1, byrow=TRUE),
+         shape='none')
+ggsave("MV-abserr_ratevar-dating_bycalib_line-pro_newarrow.pdf",width=4.5,height = 3)
+
 
 dtemp=merge(
   dcast(data=m[m$outgroup ==TRUE,],
@@ -3114,6 +3219,8 @@ names(Position.labs) <- c(TRUE, FALSE)
 m$shallow=m$age.true<1/4
 m %>% group_by(shallow) %>% summarise(n=n())
 
+m$datingMethod = sub("\\+.*","",m$Method)
+
 
 ggplot(aes(color=Method, shape=isconcat,y=abserr,x=as.factor(Calibrations)),
        data=merge(
@@ -3433,7 +3540,6 @@ dtemp %>% group_by(Calibrations,ratevar,isconcat,datingMethod,shallow) %>%
          shape='none')
 ggsave("MV-node_age_ratevar-bias_dating_bycalib-pro_broken-arrow.pdf",width=4.5,height = 3.5)
 
-m$datingMethod = sub("\\+.*","",m$Method)
 
 concat.labs <- c("ConBL","CoalBL")
 names(concat.labs) <- c(TRUE, FALSE)
@@ -3463,7 +3569,7 @@ require("ggpmisc")
   stat_smooth(se=F,method="lm",color="black")+
   #scale_color_manual(values=c("#a02010","#40d090"))+
   scale_color_brewer(palette = "Dark2")+
-  xlab("True node age")+ylab("Esimated node age")+
+  xlab("True node age")+ylab("Estimated node age")+
    scale_x_continuous(breaks=c(1/4,3/4))+
    scale_y_continuous(breaks=c(1/4,3/4))+
    stat_poly_eq(formula = y ~ x,coef.digits = 2,
@@ -3472,47 +3578,73 @@ require("ggpmisc")
    theme(legend.position = "none")
 ggsave("MV-node_age_ratevar-scatter.png",width=9,height = 8.2)
 
-a=m[m$outgroup ==TRUE & m$root.fixed=="True" & m$Taxon.Type=="internal"&m$datingMethod %in% c("TreePL") &m$Calibrations==3,] %>%
-  ggplot(aes(x=age.true,y=age.est,color=isconcat)) + geom_point(alpha=0.1,size=0.5)+
-  facet_grid(.~ratevar,
-             labeller = labeller(ratevar = ratevar.labs,shallow=Position.labs,isconcat=concat.labs )
+ma=m
+a=ma[ma$outgroup ==TRUE & ma$root.fixed=="True" & ma$Taxon.Type=="internal"&ma$datingMethod %in% c("TreePL") &ma$Calibrations==3,] %>%
+  ggplot(aes(x=age.true,y=age.est,color=ratevar)) + 
+  geom_point(alpha=0.1,size=0.5)+
+  facet_grid(.~isconcat,
+             labeller = labeller(isconcat=concat.labs )
+             #labeller = labeller(ratevar = ratevar.labs,shallow=Position.labs,isconcat=concat.labs )
   )+
   theme_classic()+
   geom_abline(color="black",linetype="dashed",size=1)+
   stat_smooth(se=F,method="lm")+
   #scale_color_manual(values=c("#a02010","#20c0c0"),labels=c("CoalBL","ConBL"),name="")+
-  scale_color_brewer(palette = "Dark2",labels=c("CoalBL","ConBL"),name="TreePL+")+
-  xlab("True node age")+ylab("Esimated node age")+
+  #scale_color_brewer(palette = "Dark2",labels=c("CoalBL","ConBL"),name="TreePL+")+
+  scale_color_viridis_d(end = 0.91,direction = -1,option = "E",name="Clock deviation:", labels=c("High","Med","Low"))+
+  xlab("True node age")+ylab("Estimated node age")+
+  scale_x_continuous(breaks=c(1/4,3/4))+
+  scale_y_continuous(breaks=c(1/4,3/4))+
+  #scale_shape_manual(values=c(15,16,18),name="Clock dev.", labels=c("High","Med","Low"))+
+  stat_poly_eq(formula = y ~ x,coef.digits = 2,vstep = 0.08,size=3,alpha=1.0,
+               aes(label = sub(".*=..","",after_stat(eq.label))),
+               parse = TRUE)+
+  theme(legend.position = "top",axis.title.x = element_blank(),legend.box.margin = unit(0,"pt"),legend.margin =  unit(0,"pt"))
+a
+ggsave("MV-node_age_ratevar-scatter-treePL-c3.pdf",width=5,height = 2.5)
+
+# line 3177
+mb = m
+b=mb[mb$outgroup ==TRUE & mb$root.fixed=="True" & mb$Taxon.Type=="internal"&mb$datingMethod=="TreePL" &mb$Calibrations==3,] %>%
+  ggplot(aes(x=age.true,y=age.est,color=conditionAD)) + geom_point(alpha=0.1,size=0.5)+
+  facet_grid(.~isconcat,
+             labeller = labeller(isconcat=concat.labs ))+
+  theme_classic()+
+  geom_abline(color="black",linetype="dashed",size=1)+
+  stat_smooth(se=F,method="lm")+
+  #scale_color_brewer(palette = "Dark2")+
+  scale_color_viridis_d(end = 0.8,direction = -1,name="ILS:")+
+  #scale_color_manual(values=c("#227FBB","#FF7F00"), labels=c("CoalBL","ConBL"),name="TreePL+")+
+  xlab("True node age")+ylab("Estimated node age")+
   scale_x_continuous(breaks=c(1/4,3/4))+
   scale_y_continuous(breaks=c(1/4,3/4))+
   stat_poly_eq(formula = y ~ x,coef.digits = 2,vstep = 0.08,size=3,
                aes(label = sub(".*=..","",after_stat(eq.label))),
                parse = TRUE)+
-  theme(legend.position = "right",axis.title.x = element_blank())
-a
-ggsave("MV-node_age_ratevar-scatter-treePL-c3.pdf",width=5,height = 2.5)
+  theme(legend.position = "top",legend.box.margin = unit(0,"pt"),legend.margin =  unit(0,"pt"))
+b
 
-b=m[m$outgroup ==TRUE & m$root.fixed=="True" & m$Taxon.Type=="internal"&m$datingMethod=="TreePL" &m$Calibrations==3,] %>%
+m[m$outgroup ==TRUE & m$root.fixed=="True" & m$Taxon.Type=="internal"&m$datingMethod=="TreePL" &m$Calibrations==3,] %>%
   ggplot(aes(x=age.true,y=age.est,color=isconcat)) + geom_point(alpha=0.1,size=0.5)+
-  facet_grid(.~conditionAD,
-             labeller = labeller(ratevar = ratevar.labs,shallow=Position.labs,isconcat=concat.labs )
-  )+
+  facet_grid(.~conditionAD)+
   theme_classic()+
   geom_abline(color="black",linetype="dashed",size=1)+
   stat_smooth(se=F,method="lm")+
   scale_color_brewer(palette = "Dark2")+
-  xlab("True node age")+ylab("Esimated node age")+
+  scale_color_manual(values=c("#227FBB","#FF7F00"), labels=c("CoalBL","ConBL"),name="TreePL+")+
+  xlab("True node age")+ylab("Estimated node age")+
   scale_x_continuous(breaks=c(1/4,3/4))+
   scale_y_continuous(breaks=c(1/4,3/4))+
   stat_poly_eq(formula = y ~ x,coef.digits = 2,vstep = 0.08,size=3,
                aes(label = sub(".*=..","",after_stat(eq.label))),
                parse = TRUE)+
-  theme(legend.position = "none")
+  theme(legend.position = "bottom")
 b
+
 ggsave("MV-node_age_add-scatter-treePL-c3.pdf",width=7,height = 2.5)
 
 library(cowplot)
 plot_grid(a, b, labels = c("a)","b)"),ncol=1)
 
-ggsave("MV-node_age-scatter-treePL-c3.pdf",width=6.3,height = 4.6)
+ggsave("MV-node_age-scatter-treePL-c3.pdf",width=7,height = 6)
  
