@@ -268,7 +268,7 @@ corr=read.csv('castles_caml_corr.csv')
 
 ggplot(aes(x=l1,y=l2,color=Branch.Type),data=corr)+
   geom_point(alpha=0.6)+
-  scale_x_continuous(trans="log10",name="Branch length (CASTLES-Pro)")+
+  scale_x_continuous(trans="log10",name="Branch length (CoalBL)")+
   scale_y_continuous(trans="log10",name="Branch length (ConBL)")+
   facet_wrap(~Method,ncol=4)+
   stat_smooth(se=F,method="glm",formula=y ~ poly(x, 2))+
@@ -284,7 +284,7 @@ corr=read.csv('node_age_corr.csv')
 
 ggplot(aes(x=l1,y=l2,color=Node.Type),data=corr)+
   geom_point(alpha=0.6)+
-  scale_x_continuous(trans="log10",name="Node age (CASTLES-Pro)")+
+  scale_x_continuous(trans="log10",name="Node age (CoalBL)")+
   scale_y_continuous(trans="log10",name="Node age (ConBL)")+
   facet_wrap(~Method,ncol=4)+
   stat_smooth(se=F,method="glm",formula=y ~ poly(x, 2))+
