@@ -38,32 +38,21 @@ def extract_node_metadata(node):
         except (TypeError, ValueError):
             pass
 
+    # ---- Fix swapped intervals ----
+    interval_pairs = [
+        ('t_lower', 't_upper'),
+        ('mu_lower', 'mu_upper'),
+        ('bl_lower', 'bl_upper')
+    ]
+
+    for lower_key, upper_key in interval_pairs:
+        lower = metadata[lower_key]
+        upper = metadata[upper_key]
+
+        if lower is not None and upper is not None and lower > upper:
+            metadata[lower_key], metadata[upper_key] = upper, lower
+
     return metadata
-
-
-def is_within(point, lower, upper):
-    if lower is None or upper is None or point is None:
-        return None
-    return lower <= point <= upper
-
-
-def compute_CI_containment(df):
-
-    coal = df[df["Method"] == "MD-Cat+CoalBL"]
-    con  = df[df["Method"] == "MD-Cat+ConBL"]
-
-    merged = coal.merge(
-        con,
-        on=["Calibrations", 'Condition','Replicate','clade_id'],
-        suffixes=('_coal','_con')
-    )
-
-    merged['coal_in_con_CI'] = (
-        (merged['t_coal'] >= merged['t_lower_con']) &
-        (merged['t_coal'] <= merged['t_upper_con'])
-    )
-
-    return merged
 
 
 def compute_CI_zscores(df, param):
@@ -141,6 +130,73 @@ def summarize_overlap(merged):
     return inside / total
 
 
+def extract_true_values(tree, calib_num):
+    true_map = {}
+
+    # compute distance from root for all nodes
+    root_dist = {}
+    for node in tree.preorder_node_iter():
+        if node.parent_node is None:
+            root_dist[node] = 0.0
+        else:
+            length = node.edge.length if node.edge.length is not None else 0.0
+            root_dist[node] = root_dist[node.parent_node] + length
+
+    tree_height = max(root_dist[n] for n in tree.leaf_node_iter())
+
+    for node in tree.postorder_node_iter():
+
+        if node.parent_node is None:
+            continue
+
+        clade_id = node.edge.bipartition.leafset_as_bitstring()
+
+        # true branch length
+        bl_true = None
+        if node.edge.length is not None:
+            bl_true = float(node.edge.length)
+
+        # compute true node age
+        if calib_num == 0:
+            # unit ultrametric case
+            t_true = root_dist[node]
+        else:
+            # calibrated case (tips = 0)
+            t_true = tree_height - root_dist[node]
+
+        true_map[clade_id] = {
+            "t_true": t_true,
+            "bl_true": bl_true
+        }
+
+    return true_map
+
+
+def compute_true_coverage(df, param="t"):
+    lower = f"{param}_lower"
+    upper = f"{param}_upper"
+    true  = f"{param}_true"
+
+    valid = df.dropna(subset=[lower, upper, true]).copy()
+
+    # Ensure lower <= upper
+    valid["ci_lower"] = valid[[lower, upper]].min(axis=1)
+    valid["ci_upper"] = valid[[lower, upper]].max(axis=1)
+
+    # Check if true value is inside CI
+    valid["true_in_ci"] = (
+        (valid[true] >= valid["ci_lower"]) &
+        (valid[true] <= valid["ci_upper"])
+    )
+
+    summary = valid.groupby("Method")["true_in_ci"].mean()
+
+    for m, v in summary.items():
+        print(f"{m}: {v:.2%} of true values fall within the 95% CI")
+
+    return summary
+
+
 def summarize_zscores(merged):
     # Drop nodes with missing z-score
     valid = merged.dropna(subset=['z_score'])
@@ -208,7 +264,9 @@ if __name__ == "__main__":
         "mu_upper",
         "bl",
         "bl_lower",
-        "bl_upper"
+        "bl_upper",
+        "t_true",
+        "bl_true"
     ])
 
     for c in range(len(calibs)):
@@ -238,6 +296,22 @@ if __name__ == "__main__":
                             gtee = float(g.read())
                     except:
                         print('no ad or gtee file')
+
+                    true_tree_path = dataset_path + condition + '/' + replicate + '/s_tree_tu_5.trees'
+                    if calib == '':
+                        true_tree_path = dataset_path + condition + '/' + replicate + '/s_tree_unit_ultrametric.trees'
+
+                    true_tree = dendropy.Tree.get(
+                        path=true_tree_path,
+                        schema="newick",
+                        taxon_namespace=tns,
+                        preserve_underscores=True,
+                        rooting='force-rooted'
+                    )
+
+                    true_tree.encode_bipartitions()
+
+                    true_map = extract_true_values(true_tree, calib_value)
 
                     for method in methods:
 
@@ -286,7 +360,8 @@ if __name__ == "__main__":
                                 schema="newick",
                                 taxon_namespace=tns,
                                 preserve_underscores=True,
-                                extract_comment_metadata=True
+                                extract_comment_metadata=True,
+                                rooting='force-rooted'
                             )
 
                             tree.encode_bipartitions()
@@ -302,6 +377,8 @@ if __name__ == "__main__":
                                 # Unique clade identifier (bitstring of descendant taxa)
                                 clade_id = node.edge.bipartition.leafset_as_bitstring()
                                 meta = extract_node_metadata(node)
+
+                                true_vals = true_map.get(clade_id, {"t_true": None, "bl_true": None})
 
                                 rows.append([
                                     calib_value,
@@ -321,7 +398,9 @@ if __name__ == "__main__":
                                     meta['mu_upper'],
                                     meta['bl'],
                                     meta['bl_lower'],
-                                    meta['bl_upper']
+                                    meta['bl_upper'],
+                                    true_vals["t_true"],
+                                    true_vals["bl_true"]
                                 ])
 
                         except Exception as e:
@@ -348,20 +427,27 @@ if __name__ == "__main__":
         "mu_upper",
         "bl",
         "bl_lower",
-        "bl_upper"
+        "bl_upper",
+        "t_true",
+        "bl_true"
     ])
 
-    df.to_csv("mvroot_MDcat_CI.csv", index=False)
-    print("Computing containment...")
+    missing_true = df["t_true"].isna().sum()
+    print("Nodes missing true value:", missing_true)
 
-    #merged = compute_CI_containment(df)
-    # summarize_overlap(merged)
+    compute_true_coverage(df, "t")
+    compute_true_coverage(df, "bl")
+
+    df.to_csv("mvroot_MDcat_CI_true.csv", index=False)
+    # print("Computing containment...")
+
+
 
     # Save results
     #merged.to_csv("coal_vs_con_CI_containment.csv", index=False)
-
+    #summarize_overlap(merged)
     merged_with_z, overlap_ratio = compute_CI_zscores(df, param='bl')
     merged_with_z, overlap_ratio = compute_CI_zscores(df, param='t')
     merged_with_z, overlap_ratio = compute_CI_zscores(df, param='mu')
-    #summarize_zscores(merged_with_z)
-    merged_with_z.to_csv("coal_vs_con_CI_zscores.csv", index=False)
+    # #summarize_zscores(merged_with_z)
+    # merged_with_z.to_csv("coal_vs_con_CI_zscores.csv", index=False)
