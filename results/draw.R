@@ -307,10 +307,10 @@ ggsave("treepl-time_large_steps_median.pdf",width=3.5,height=2.5)
 ggplot(aes(x=Condition,y=median_runtime, linetype=Step, shape=Step, color=Method, group = interaction(Method, Step)),
        data=summary_t)+
   geom_line() +
-  geom_point() +
+  geom_point() + 
   scale_color_manual(values=c("#FDBF6F", "#FF7F00"),name="SU Length\nmethod",labels=c("CoalBL","ConBL"))+
-  scale_linetype(lables=c("Dating","SU Length"))+
-  scale_shape(lables=c("Dating","SU Length"))+
+  scale_linetype(labels=c("Dating","SU Length"))+
+  scale_shape(labels=c("Dating","SU Length"))+
   scale_y_log10(name="Running time (minutes)" )+
   theme_classic()+
   theme(legend.position = "right")+
@@ -373,7 +373,7 @@ ggplot(aes(x=Condition,y=median_mem, linetype=Step, color=Method, group = intera
   geom_point() +
   stat_smooth(method="lm",se=F, linewidth=0.8)+
   scale_color_manual(values=c("#FDBF6F", "#FF7F00"))+
-  scale_y_log10(name="Peak memory usage (GB)",limits = c(NA, 1000))+
+  scale_y_log10(name="Peak memory usage (GB)")+
   geom_text(data = slope_labels, 
             aes(x = x_pos-0.1, y = y_pos+0.2, label = label),color="grey20",
              size = 3, show.legend = FALSE) +
