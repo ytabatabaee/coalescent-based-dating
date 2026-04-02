@@ -2,7 +2,7 @@
 
 This repository contains the datasets and scripts used in the following paper:
 
-- Y. Tabatabaee, S. Claramunt, S. Mirarab (2025). Coalescent-based branch length estimation improves dating of species trees. https://www.biorxiv.org/content/10.1101/2025.02.25.640207v1.abstract
+- Y. Tabatabaee, S. Claramunt, S. Mirarab (2026). Coalescent-based branch length estimation improves dating of species trees. Systematic Biology (in press) https://www.biorxiv.org/content/10.1101/2025.02.25.640207v1.abstract
 
 For experiments in this study, we generated three sets of simulated datasets with gene tree discordance due to incomplete lineage sorting (ILS) and analyzed two avian biological datasets from [Harvey et. al. (2020)](https://www.science.org/doi/10.1126/science.aaz6970) and [Stiller et. al. (2024)](https://www.nature.com/articles/s41586-024-07323-1). The simulated datasets have model species trees with substitution-unit, generation-unit, and time-unit branch lengths. All datasets are available [here](https://drive.google.com/drive/folders/1fwU1Nc6BtzvXqQ1KYWPmkZqpC5w3c6_s?usp=sharing).
 
@@ -24,6 +24,7 @@ This dataset has six model conditions with varying deviation from the molecular 
 - `castlespro_estimatedgenetre.gtr_s_tree.trees.rooted.labeled`: true species tree furnished with CASTLES-Pro SU branch lengths
 - `[dating-method]_n[num-calib]_[root_unfixed]_RAxML_result.concat_align_s_tree.trees.rooted.labeled.[normalized]`: RAxML SU tree dated with [dating-method] (can be treepl, wlogdate, mdcat, and lsd2) with [num-calib] calibration points. The .[normalized] flag specifies the unit-ultrametric version of the dated tree. Trees dated with lsd2 have a `.date.nwk` extension.
 - `[dating-method]_n[num-calib]_[root_unfixed]_castlespro_estimatedgenetre.gtr_s_tree.trees.rooted.labeled.[normalized]`: CASTLES-Pro SU tree dated with [dating-method] (can be treepl, wlogdate, mdcat, and lsd2) with [num-calib] calibration points. The .[normalized] flag specifies the unit-ultrametric version of the dated tree. Trees dated with lsd2 have a `.date.nwk` extension.
+- `[dating-method]_CI_n[num-calib]_[root_unfixed]_castlespro_estimatedgenetre.gtr_s_tree.trees.rooted.labeled.[normalized]`: same as above but with each branch  annotated with confidence intervals for branch lengths and node ages.
 - `ad.txt` : average RF distance between the model species tree and true gene trees
 - `gtee_gtr.txt`: average RF distance between true and estimated gene trees
 
@@ -68,8 +69,8 @@ This dataset has 8 model conditions with 50, 100, 200, 500, 1K, 2K, 5K, and 10K-
 
 - **Neoavian**: 363-taxon neoavian dataset from [Stiller et al. (2024)](https://www.nature.com/articles/s41586-024-07323-1) with 63,430 single-copy genes. The original data is available [here](https://sid.erda.dk/cgi-sid/ls.py?share_id=ENhZODU9YE). Results from the analysis in this study is available at [/biological/avian-stiller](https://github.com/ytabatabaee/coalescent-based-dating/tree/main/biological/avian-stiller). Below is a description of files in this directory.
 
-- `mdcat_median_40Kl_caml_stiller.rooted.tre`: ASTRAL tree furnished with ConBL branch lengths dated with MD-Cat
-- `mdcat_median_40Kl_astral4_stiller_nolabel.rooted.tre`: ASTRAL tree furnished with CASTLES-Pro branch lengths dated with MD-Cat
+- `mdcat_[CI]_median_40Kl_caml_stiller.rooted.tre`: ASTRAL tree furnished with ConBL branch lengths dated with MD-Cat. The `CI` flag denotes confidence intervals.
+- `mdcat_[CI]_median_40Kl_astral4_stiller_nolabel.rooted.tre`: ASTRAL tree furnished with CASTLES-Pro branch lengths dated with MD-Cat. The `CI` flag denotes confidence intervals.
 - `wlogdate_median_astral4_stiller.rooted.no_label.tre`: ASTRAL tree furnished with CASTLES-Pro branch lengths dated with wLogDate
 - `wlogdate_median_astral_63K_concat_bl.rooted.no_label.tre`: ASTRAL tree furnished with ConBL branch lengths dated with wLogDate
 - `treepl_median_astral_63K_concat_bl.rooted.tre`: ASTRAL tree furnished with ConBL branch lengths dated with TreePL
