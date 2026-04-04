@@ -4,7 +4,7 @@ This repository contains the datasets and scripts used in the following paper:
 
 - Y. Tabatabaee, S. Claramunt, S. Mirarab (2026). Coalescent-based branch length estimation improves dating of species trees. Systematic Biology (in press) https://www.biorxiv.org/content/10.1101/2025.02.25.640207v1.abstract
 
-For experiments in this study, we generated three sets of simulated datasets with gene tree discordance due to incomplete lineage sorting (ILS) and analyzed two avian biological datasets from [Harvey et. al. (2020)](https://www.science.org/doi/10.1126/science.aaz6970) and [Stiller et. al. (2024)](https://www.nature.com/articles/s41586-024-07323-1). The simulated datasets have model species trees with substitution-unit, generation-unit, and time-unit branch lengths. All datasets are available [here](https://drive.google.com/drive/folders/1fwU1Nc6BtzvXqQ1KYWPmkZqpC5w3c6_s?usp=sharing).
+For experiments in this study, we generated three sets of simulated datasets with gene tree discordance due to incomplete lineage sorting (ILS) and analyzed two avian biological datasets from [Harvey et. al. (2020)](https://www.science.org/doi/10.1126/science.aaz6970) and [Stiller et. al. (2024)](https://www.nature.com/articles/s41586-024-07323-1). The simulated datasets have model species trees with substitution-unit, generation-unit, and time-unit branch lengths. All datasets can be accessed from Dryad https://doi.org/10.5061/dryad.hmgqnk9xv.
 
 ### Simulated datasets
 
