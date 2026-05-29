@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -68,6 +69,316 @@ def parse_ci(ci_args):
         sys.exit("[ERROR] --CI quantiles must satisfy 0 <= lower < upper <= 1")
 
     return str(samples_int), str(lower_float), str(upper_float)
+
+
+def normalize_age(age):
+    cleaned = age.strip().strip("`")
+
+    try:
+        float(cleaned)
+    except ValueError:
+        sys.exit(f"[ERROR] Calibration age must be numeric: {age}")
+
+    return cleaned
+
+
+def parse_calibration_line(line, line_no):
+    stripped = line.strip()
+
+    if not stripped or stripped.startswith("#"):
+        return {"type": "skip"}
+
+    if re.match(r"^(mrca|min|max)\s*=", stripped, re.IGNORECASE):
+        return {"type": "treepl", "line": line.rstrip("\n")}
+
+    mrca_match = re.match(
+        r"^mrca\s*\(\s*([^,()]+)\s*,\s*([^,()]+)\s*\)\s+(\S+)(?:\s+#.*)?$",
+        stripped,
+        re.IGNORECASE
+    )
+
+    if mrca_match:
+        return {
+            "type": "mrca",
+            "taxa": (
+                mrca_match.group(1).strip(),
+                mrca_match.group(2).strip()
+            ),
+            "age": normalize_age(mrca_match.group(3))
+        }
+
+    label_match = re.match(r"^(\S+)\s+(\S+)(?:\s+#.*)?$", stripped)
+
+    if label_match:
+        return {
+            "type": "label",
+            "label": label_match.group(1),
+            "age": normalize_age(label_match.group(2))
+        }
+
+    sys.exit(
+        f"[ERROR] Unsupported calibration format on line {line_no}: "
+        f"{line.rstrip()}"
+    )
+
+
+def parse_calibrations(calibrations):
+    entries = []
+
+    with open(calibrations) as f:
+        for line_no, line in enumerate(f, start=1):
+            entries.append(parse_calibration_line(line, line_no))
+
+    return entries
+
+
+def load_tree(tree_path):
+    try:
+        import dendropy
+    except ImportError:
+        sys.exit("[ERROR] DendroPy is required for MRCA calibration handling")
+
+    return dendropy.Tree.get(
+        path=tree_path,
+        schema="newick",
+        rooting="force-rooted",
+        preserve_underscores=True
+    )
+
+
+def write_tree(tree, output):
+    with open(output, "w") as f:
+        f.write(
+            tree.as_string(
+                schema="newick",
+                suppress_rooting=True,
+                suppress_annotations=True,
+                unquoted_underscores=True
+            )
+        )
+
+
+def get_leaf_label(node):
+    if node.taxon is not None:
+        return node.taxon.label
+
+    return node.label
+
+
+def find_node_by_label(tree, label):
+    for node in tree.preorder_node_iter():
+        if node.label == label:
+            return node
+
+        if node.taxon is not None and node.taxon.label == label:
+            return node
+
+    return None
+
+
+def first_leaf_label(node):
+    for leaf in node.leaf_iter():
+        return get_leaf_label(leaf)
+
+    return None
+
+
+def representative_mrca_taxa(node, label):
+    children = list(node.child_node_iter())
+
+    if len(children) < 2:
+        sys.exit(
+            f"[ERROR] Calibration label {label} does not identify an internal "
+            "node with at least two child clades"
+        )
+
+    taxa = []
+
+    for child in children:
+        taxon = first_leaf_label(child)
+
+        if taxon is not None:
+            taxa.append(taxon)
+
+        if len(taxa) == 2:
+            return taxa[0], taxa[1]
+
+    sys.exit(f"[ERROR] Could not identify descendant taxa for {label}")
+
+
+def existing_labels(tree):
+    labels = set()
+
+    for node in tree.preorder_node_iter():
+        if node.label:
+            labels.add(node.label)
+
+        if node.taxon is not None and node.taxon.label:
+            labels.add(node.taxon.label)
+
+    return labels
+
+
+def next_mrca_label(labels, index):
+    while True:
+        candidate = f"mrca{index}"
+
+        if candidate not in labels:
+            labels.add(candidate)
+            return candidate, index + 1
+
+        index += 1
+
+
+def get_mrca_node(tree, taxa):
+    try:
+        return tree.mrca(taxon_labels=list(taxa))
+    except Exception as exc:
+        sys.exit(
+            "[ERROR] Could not find MRCA for "
+            f"{taxa[0]} and {taxa[1]}: {exc}"
+        )
+
+
+def prepare_treepl_calibrations(entries, tree_path, output):
+    tree = None
+    out_lines = []
+    calibration_index = 1
+
+    for entry in entries:
+        if entry["type"] == "skip":
+            continue
+
+        if entry["type"] == "treepl":
+            out_lines.append(entry["line"])
+            continue
+
+        calibration_name = f"pipeline_calib{calibration_index}"
+        calibration_index += 1
+
+        if entry["type"] == "mrca":
+            taxon1, taxon2 = entry["taxa"]
+        else:
+            if tree is None:
+                tree = load_tree(tree_path)
+
+            node = find_node_by_label(tree, entry["label"])
+
+            if node is None:
+                sys.exit(
+                    f"[ERROR] Calibration label not found in tree: "
+                    f"{entry['label']}"
+                )
+
+            taxon1, taxon2 = representative_mrca_taxa(node, entry["label"])
+
+        out_lines.extend([
+            f"mrca = {calibration_name} {taxon1} {taxon2}",
+            f"min = {calibration_name} {entry['age']}",
+            f"max = {calibration_name} {entry['age']}",
+        ])
+
+    with open(output, "w") as f:
+        f.write("\n".join(out_lines))
+
+        if out_lines:
+            f.write("\n")
+
+    return output
+
+
+def prepare_labeled_calibrations(entries, tree_path, output_tree, output_calibrations):
+    tree = None
+    labels = None
+    label_index = 1
+    mrca_labels = {}
+    out_lines = []
+    has_mrca = any(entry["type"] == "mrca" for entry in entries)
+
+    if has_mrca:
+        tree = load_tree(tree_path)
+        labels = existing_labels(tree)
+
+    for entry in entries:
+        if entry["type"] == "skip":
+            continue
+
+        if entry["type"] == "treepl":
+            sys.exit(
+                "[ERROR] TreePL-style calibration lines are supported only "
+                "with --method treepl"
+            )
+
+        if entry["type"] == "label":
+            if tree is not None and find_node_by_label(tree, entry["label"]) is None:
+                sys.exit(
+                    f"[ERROR] Calibration label not found in tree: "
+                    f"{entry['label']}"
+                )
+
+            out_lines.append(f"{entry['label']} {entry['age']}")
+            continue
+
+        node = get_mrca_node(tree, entry["taxa"])
+        node_key = id(node)
+
+        if node_key not in mrca_labels:
+            label, label_index = next_mrca_label(labels, label_index)
+            node.label = label
+            mrca_labels[node_key] = label
+
+        out_lines.append(f"{mrca_labels[node_key]} {entry['age']}")
+
+    with open(output_calibrations, "w") as f:
+        f.write("\n".join(out_lines))
+
+        if out_lines:
+            f.write("\n")
+
+    if tree is None:
+        return tree_path, output_calibrations
+
+    write_tree(tree, output_tree)
+    return output_tree, output_calibrations
+
+
+def prepare_calibrations(tree_path, calibrations, method, intermediate_dir):
+    entries = parse_calibrations(calibrations)
+    parsed_entries = [entry for entry in entries if entry["type"] != "skip"]
+
+    if not parsed_entries:
+        sys.exit("[ERROR] Calibration file is empty")
+
+    has_treepl_entries = any(entry["type"] == "treepl" for entry in parsed_entries)
+    has_simple_entries = any(
+        entry["type"] in {"label", "mrca"} for entry in parsed_entries
+    )
+
+    if has_treepl_entries and method != "treepl":
+        sys.exit(
+            "[ERROR] TreePL-style calibration lines are supported only with "
+            "--method treepl"
+        )
+
+    if method == "treepl":
+        if has_treepl_entries and not has_simple_entries:
+            return tree_path, calibrations
+
+        output = os.path.join(intermediate_dir, "calibrations.treepl.txt")
+        return tree_path, prepare_treepl_calibrations(entries, tree_path, output)
+
+    output_tree = os.path.join(intermediate_dir, "species_tree_su.calibrated.tre")
+    output_calibrations = os.path.join(
+        intermediate_dir,
+        f"calibrations.{method}.txt"
+    )
+
+    return prepare_labeled_calibrations(
+        entries,
+        tree_path,
+        output_tree,
+        output_calibrations
+    )
 
 
 def run_astral4(
@@ -318,21 +629,26 @@ def main():
         gene_length=args.gene_length
     )
 
-    dating_input = su_tree
+    dating_input, dating_calibrations = prepare_calibrations(
+        su_tree,
+        args.calibrations,
+        args.method,
+        intermediate_dir
+    )
 
     print("\n=== STEP 2: Molecular dating ===\n")
 
     if args.method == "treepl":
         run_treepl(
             dating_input,
-            args.calibrations,
+            dating_calibrations,
             args.output
         )
 
     elif args.method == "mdcat":
         run_mdcat(
             dating_input,
-            args.calibrations,
+            dating_calibrations,
             args.output,
             ci=ci,
             seq_length=args.seq_length,
@@ -342,19 +658,21 @@ def main():
     elif args.method == "wlogdate":
         run_wlogdate(
             dating_input,
-            args.calibrations,
+            dating_calibrations,
             args.output
         )
 
     elif args.method == "lsd2":
         run_lsd2(
             dating_input,
-            args.calibrations,
+            dating_calibrations,
             args.output
         )
 
     print("\nPipeline completed successfully.\n")
     print(f"SU tree: {su_tree}")
+    print(f"Dating input tree: {dating_input}")
+    print(f"Dating calibrations: {dating_calibrations}")
     print(f"Dated tree: {os.path.join(args.output, 'dated_tree.tre')}")
 
     if ci is not None:

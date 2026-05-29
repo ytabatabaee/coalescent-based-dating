@@ -1,19 +1,22 @@
-## Coalescent-based dating
+# Coalescent-based dating
 
-This repository contains the datasets and scripts used in the following paper:
+This repository contains the pipeline, datasets and scripts used in the following paper:
 
 - Y. Tabatabaee, S. Claramunt, S. Mirarab (2026). Coalescent-based branch length estimation improves dating of species trees. Systematic Biology, syag038. https://doi.org/10.1093/sysbio/syag038
 
 For experiments in this study, we generated three sets of simulated datasets with gene tree discordance due to incomplete lineage sorting (ILS) and analyzed two avian biological datasets from [Harvey et. al. (2020)](https://www.science.org/doi/10.1126/science.aaz6970) and [Stiller et. al. (2024)](https://www.nature.com/articles/s41586-024-07323-1). The simulated datasets have model species trees with substitution-unit, generation-unit, and time-unit branch lengths. All datasets can be accessed from Dryad https://doi.org/10.5061/dryad.hmgqnk9xv.
 
-### Dating pipeline
+## Dating pipeline
+
 We provide an end-to-end pipeline for coalescent-aware divergence time estimation from gene trees. The pipeline has the following steps:
 
-1. Infers a species tree topology using [ASTRAL/ASTER](https://github.com/chaoszhang/ASTER)
-2. Estimates coalescent-aware branch lengths using [CASTLES-Pro](https://github.com/ytabatabaee/CASTLES)
-3. Converts substitution-unit branch lengths into time units using an ML-based dating method
+1. Infers a species tree topology using [ASTRAL/ASTER](https://github.com/chaoszhang/ASTER).
+2. Estimates coalescent-aware branch lengths using [CASTLES-Pro](https://github.com/ytabatabaee/CASTLES).
+3. Converts substitution-unit branch lengths into time units using an ML-based dating method.
 
-#### Installation
+![Dating pipeline overview](theory/pipeline.png)
+
+### Installation
 To run the dating pipeline, follow these commands.
 ```bash
 git clone https://github.com/ytabatabaee/coalescent-based-dating.git
@@ -24,9 +27,9 @@ conda activate cbdating
 conda install -c bioconda astral-tree newick_utils
 ```
 
-In addition, you need to install the ML-based dating methods you plan to use, for example, [TreePL](https://github.com/blackrim/treePL), [MD-Cat](https://github.com/uym2/MD-Cat), [wLogDate](https://github.com/uym2/wLogDate), or [LSD2](https://github.com/tothuhien/lsd2).
+In addition, you need to install the ML-based dating methods you plan to use. The pipeline currently supports [TreePL](https://github.com/blackrim/treePL), [MD-Cat](https://github.com/uym2/MD-Cat), [wLogDate](https://github.com/uym2/wLogDate), and [LSD2](https://github.com/tothuhien/lsd2). To suggest additional dating methods, please submit an issue.
 
-#### Usage
+### Usage
 
 The pipeline can be used to infer the species tree and date it, or use a user-provided species tree. To run either pipeline, use the following command:
 ```bash
@@ -40,23 +43,23 @@ python run_pipeline.py \
     --output <output-directory>
 ```
 
-#### Arguments
+### Arguments
 
 - `--gene-trees`       gene trees in Newick format
 - `--species-tree`     optional user-provided species tree topology in Newick format
 - `--calibrations`     calibration file
-- `--method`           dating method (`treepl`, `mdcat`, `wlogdate`, `lsd2`)
+- `--method`           dating method (currently supports `treepl`, `mdcat`, `wlogdate`, `lsd2`)
 - `--outgroup`         optional outgroup taxon name for rooting the species tree before dating
 - `--output`           output directory
 - `--CI`               MD-Cat confidence intervals (`num_samples lower_quantile upper_quantile`)
 - `--seq-length`       optional sequence length passed to MD-Cat
 - `--mdcat-p`          MD-Cat `-p` value (default: `10`)
 
-The three `--CI` values are user-controlled. For example, `--CI "1000 0.025 0.975"` computes 95\% confidence intervals from 1000 posterior samples, while `--CI "100 0.05 0.95"` uses 100 samples and the 5th/95th percentiles. Confidence intervals are currently supported only for `--method mdcat`.
+The three `--CI` values are user-controlled. For example, `--CI "1000 0.025 0.975"` computes 95\% confidence intervals from 1000 posterior samples, while `--CI "100 0.05 0.95"` uses 100 samples and the 5th/95th percentiles (90\% confidence intervals). Confidence intervals are currently supported only for `--method mdcat`.
 
-#### Calibration Format
+### Calibration Format
 
-Different ML-based dating methods use different calibration formats for fixing pre-specified times. TreePL uses minimum/maximum bounds, such as 
+Different ML-based dating methods use different calibration formats for pre-specified times. TreePL can use minimum/maximum bounds, such as 
 
 ```text
 mrca = calib1 taxonA taxonB
@@ -68,15 +71,23 @@ min = calib2 120
 max = calib2 135
 ```
 
-MD-Cat, wLogDate, and LSD2 use fixed node ages in the format
+MD-Cat, wLogDate, LSD2, and TreePL also accept fixed node ages using either
+internal node labels or the MRCA of two terminal nodes:
 
 ```text
 i1 8.055
 i7 2.812
 i16 3.393
+mrca(24,3) 7.534
+mrca(taxonA,taxonB) 66.0
 ```
 
-#### Outputs
+For `mrca(taxonA,taxonB)` entries, the pipeline labels the corresponding
+internal node before running dating methods that require node labels. For
+TreePL, the pipeline converts fixed-age entries to equivalent minimum and
+maximum bounds internally.
+
+### Outputs
 The output directory includes the following files
 ```text
 results/
@@ -86,12 +97,12 @@ results/
 └── intermediate/
 ```
 where
-- `species_tree_su.tre`   species tree with CASTLES-Pro substitution-unit branch lengths
-- `dated_tree.tre`        time-calibrated species tree dated using the selected method
+- `species_tree_su.tre` is the species tree with CASTLES-Pro substitution-unit branch lengths.
+- `dated_tree.tre` is the time-calibrated species tree dated using the selected method.
 
 When `--CI` is used with MD-Cat, `dated_tree.tre` includes confidence interval annotations. `logs` and `intermediate` directories include config and intermediate files generated by the dating methods.
 
-#### Example
+### Example
 The [example/](https://github.com/ytabatabaee/coalescent-based-dating/tree/main/example) directory includes one sample 30-taxon dataset.
 ```bash
 python run_pipeline.py \
@@ -103,9 +114,9 @@ python run_pipeline.py \
     --output results/example/
 ```
 
-### Simulated datasets
+## Simulated datasets
 
-#### 30-taxon dataset
+### 30-taxon dataset
 This dataset has six model conditions with varying deviation from the molecular clock and inclusion of an outgroup, each with 100 replicates. The model conditions are specified as `outgroup.[has-OG].species.[DEV].genes.[DEV]` where `[has-OG]` is 1 when the dataset has an outgroup and 0 otherwise, and `[DEV]` shows the level of deviation from the clock (parameter α of the gamma distribution) that is set to 5 (low), 1.5 (medium), or 0.15 (high). Original dataset is from [Mai at al. (2017)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0182238) and available at [https://uym2.github.io/MinVar-Rooting/](https://uym2.github.io/MinVar-Rooting/). Below is a description of files in each directory.
 
 - `truegenetrees`: true gene trees
@@ -126,7 +137,7 @@ This dataset has six model conditions with varying deviation from the molecular 
 - `gtee_gtr.txt`: average RF distance between true and estimated gene trees
 
 
-#### 101-taxon dataset
+### 101-taxon dataset
 This dataset has four model conditions with varying sequence lengths (1600bp, 800bp, 400bp, 200bp) corresponding to different levels of gene tree estimation error (23%, 31%, 42%, and 55%). The original dataset is from [Zhang et. al. (2018)](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2129-y) and available at [https://gitlab.com/esayyari/ASTRALIII/](https://gitlab.com/esayyari/ASTRALIII/). Below is a description of files in each directory.
 
 - `truegenetrees`: true gene trees
@@ -142,7 +153,7 @@ This dataset has four model conditions with varying sequence lengths (1600bp, 80
 - `[dating-method]_n[num-calib]_[root_unfixed]_castlespro_fasttree_genetrees_[seq-len]_non.[num-genes]_s_tree.trees.rooted.labeled.[normalized]`: CASTLES-Pro SU tree dated with [dating-method] (can be treepl, wlogdate, mdcat, and lsd2) with [num-calib] calibration points for the model condition corresponding to [num-genes] genes and [seq-len]bp sequences. The .[normalized] flag specifies the unit-ultrametric version of the dated tree. Trees dated with lsd2 have a `.date.nwk` extension. Files with additional extensions include config files and log files for each method.
 - `[dating-method]_n[num-calib]_[root_unfixed]_RAxML_result.concat_for_fasttree_[seq-len].[num-genes]_s_tree.trees.rooted.labeled.[normalized]`: RAxML SU tree dated with [dating-method] (can be treepl, wlogdate, mdcat, and lsd2) with [num-calib] calibration points for the model condition corresponding to [num-genes] genes and [seq-len]bp sequences. The .[normalized] flag specifies the unit-ultrametric version of the dated tree. Trees dated with lsd2 have a `.date.nwk` extension. Files with additional extensions include config files and log files for each method.
 
-#### Large dataset
+### Large dataset
 This dataset has 8 model conditions with 50, 100, 200, 500, 1K, 2K, 5K, and 10K-taxon trees with 20 replicates in each condition. Below is a description of files in each directory `large/[num-taxa]/[rep-num]/` where `[num-taxa]` is the model condition (number of taxa) and `[rep-num]` is the replicate index.
 
 - `truegenetrees`: true gene trees
@@ -162,7 +173,7 @@ This dataset has 8 model conditions with 50, 100, 200, 500, 1K, 2K, 5K, and 10K-
 - `gtee.txt` : average RF distance between true and estimated gene trees
 
 
-### Biological datasets
+## Biological datasets
 
 - **Neoavian**: 363-taxon neoavian dataset from [Stiller et al. (2024)](https://www.nature.com/articles/s41586-024-07323-1) with 63,430 single-copy genes. The original data is available [here](https://sid.erda.dk/cgi-sid/ls.py?share_id=ENhZODU9YE). Results from the analysis in this study is available at [/biological/avian-stiller](https://github.com/ytabatabaee/coalescent-based-dating/tree/main/biological/avian-stiller). Below is a description of files in this directory.
 
