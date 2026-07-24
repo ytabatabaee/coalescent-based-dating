@@ -2,6 +2,7 @@
 
 [![DOI](https://img.shields.io/badge/DOI-10.1093%2Fsysbio%2Fsyag038-blue)](https://doi.org/10.1093/sysbio/syag038)
 [![Dryad](https://img.shields.io/badge/Dryad-10.5061%2Fdryad.hmgqnk9xv-green)](https://doi.org/10.5061/dryad.hmgqnk9xv)
+[![Talk](https://img.shields.io/badge/Talk-IMSI-orange)](https://www.imsi.institute/videos/castles-pro/)
 
 This repository contains the pipeline, datasets and scripts used in the following paper:
 
@@ -37,9 +38,9 @@ The pipeline can be used to infer the species tree and date it, or use a user-pr
 ```bash
 python run_pipeline.py \
     --gene-trees <gene-tree-file> \
+    --method <dating-method> \
     [--species-tree <species-tree-file>] \
     [--calibrations <calibration-file>] \
-    --method <dating-method> \
     [--outgroup <outgroup-name>] \
     [--mdcat-ci "<num-samples> <lower-quantile> <upper-quantile>"] \
     [--output <output-directory>]
@@ -67,6 +68,17 @@ python run_pipeline.py \
 - `--treepl-opt`, `--treepl-optad`, `--treepl-optcvad` optional TreePL optimizer values from a prime run
 
 The three `--mdcat-ci` values are user-controlled. For example, `--mdcat-ci "1000 0.025 0.975"` computes 95\% confidence intervals from 1000 posterior samples, while `--mdcat-ci "100 0.05 0.95"` uses 100 samples and the 5th/95th percentiles (90\% confidence intervals). Confidence intervals are currently supported only for `--method mdcat`.
+
+### Tests
+
+Run the software-option tests with:
+
+```bash
+python -m pytest tests/test_run_pipeline_options.py
+```
+
+These tests validate generated command-line options and TreePL config files
+without running the external dating programs.
 
 ### Calibration Format
 
