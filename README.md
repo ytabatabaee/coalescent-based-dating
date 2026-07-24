@@ -4,14 +4,14 @@ This repository contains the pipeline, datasets and scripts used in the followin
 
 - Y. Tabatabaee, S. Claramunt, S. Mirarab (2026). Coalescent-based branch length estimation improves dating of species trees. Systematic Biology, syag038. https://doi.org/10.1093/sysbio/syag038
 
-For experiments in this study, we generated three sets of simulated datasets with gene tree discordance due to incomplete lineage sorting (ILS) and analyzed two avian biological datasets from [Harvey et. al. (2020)](https://www.science.org/doi/10.1126/science.aaz6970) and [Stiller et. al. (2024)](https://www.nature.com/articles/s41586-024-07323-1). The simulated datasets have model species trees with substitution-unit, generation-unit, and time-unit branch lengths. All datasets can be accessed from Dryad https://doi.org/10.5061/dryad.hmgqnk9xv.
+For experiments in this study, we generated three sets of simulated datasets with gene tree discordance due to incomplete lineage sorting (ILS) and analyzed two avian biological datasets from [Harvey et. al. (2020)](https://www.science.org/doi/10.1126/science.aaz6970) and [Stiller et. al. (2024)](https://www.nature.com/articles/s41586-024-07323-1). All datasets can be accessed from Dryad https://doi.org/10.5061/dryad.hmgqnk9xv.
 
 ## Dating pipeline
 
 We provide an end-to-end pipeline for coalescent-aware divergence time estimation from gene trees. The pipeline has the following steps:
 
-1. Infers a species tree topology using [ASTRAL/ASTER](https://github.com/chaoszhang/ASTER).
-2. Estimates coalescent-aware branch lengths using [CASTLES-Pro](https://github.com/ytabatabaee/CASTLES).
+1. Infers a species tree topology using a summary method such as [ASTRAL/ASTER](https://github.com/chaoszhang/ASTER).
+2. Estimates coalescent-aware branch lengths using a coalescent-based method such as [CASTLES-Pro](https://github.com/ytabatabaee/CASTLES).
 3. Converts substitution-unit branch lengths into time units using an ML-based dating method.
 
 ![Dating pipeline overview](theory/pipeline.png)
@@ -22,9 +22,8 @@ To run the dating pipeline, follow these commands.
 git clone https://github.com/ytabatabaee/coalescent-based-dating.git
 cd coalescent-based-dating
 
-conda create -n cbdating python=3.10
+conda env create -f environment.yml
 conda activate cbdating
-conda install -c bioconda astral-tree newick_utils
 ```
 
 In addition, you need to install the ML-based dating methods you plan to use. The pipeline currently supports [TreePL](https://github.com/blackrim/treePL), [MD-Cat](https://github.com/uym2/MD-Cat), [wLogDate](https://github.com/uym2/wLogDate), and [LSD2](https://github.com/tothuhien/lsd2). To suggest additional dating methods, please submit an issue.
@@ -39,53 +38,77 @@ python run_pipeline.py \
     --calibrations <calibration-file> \
     --method <dating-method> \
     [--outgroup <outgroup-name>] \
-    [--CI "<num-samples> <lower-quantile> <upper-quantile>"] \
+    [--mdcat-ci "<num-samples> <lower-quantile> <upper-quantile>"] \
     --output <output-directory>
 ```
 
 ### Arguments
-
+**Required:**
 - `--gene-trees`       gene trees in Newick format
+- `--method`           dating method (currently supports `treepl`, `mdcat`, `wlogdate`, `lsd2`)
+
+**Optional:**
+
 - `--species-tree`     optional user-provided species tree topology in Newick format
 - `--calibrations`     calibration file
-- `--method`           dating method (currently supports `treepl`, `mdcat`, `wlogdate`, `lsd2`)
 - `--outgroup`         optional outgroup taxon name for rooting the species tree before dating
 - `--output`           output directory
-- `--CI`               MD-Cat confidence intervals (`num_samples lower_quantile upper_quantile`)
-- `--seq-length`       optional sequence length passed to MD-Cat
+- `--mdcat-ci`         MD-Cat confidence intervals (`num_samples lower_quantile upper_quantile`; `--CI` is also accepted)
+- `--seq-length`       optional sequence length passed to MD-Cat with `-l` or LSD2 with `-s`
+- `--lsd2-min-branch-length` LSD2 `-u` minimum branch length value (default: `0.001`)
 - `--mdcat-p`          MD-Cat `-p` value (default: `10`)
+- `--treepl-smooth`    TreePL `smooth` value (default: `100`)
+- `--treepl-numsites`  TreePL `numsites` value (default: `500000`)
+- `--treepl-nthreads`  optional TreePL `nthreads` value
+- `--treepl-thorough`, `--treepl-prime`, `--treepl-moredetailcvad` optional TreePL run flags used in the paper workflow
+- `--treepl-opt`, `--treepl-optad`, `--treepl-optcvad` optional TreePL optimizer values from a prime run
 
-The three `--CI` values are user-controlled. For example, `--CI "1000 0.025 0.975"` computes 95\% confidence intervals from 1000 posterior samples, while `--CI "100 0.05 0.95"` uses 100 samples and the 5th/95th percentiles (90\% confidence intervals). Confidence intervals are currently supported only for `--method mdcat`.
+The three `--mdcat-ci` values are user-controlled. For example, `--mdcat-ci "1000 0.025 0.975"` computes 95\% confidence intervals from 1000 posterior samples, while `--mdcat-ci "100 0.05 0.95"` uses 100 samples and the 5th/95th percentiles (90\% confidence intervals). Confidence intervals are currently supported only for `--method mdcat`.
 
 ### Calibration Format
 
-Different ML-based dating methods use different calibration formats for pre-specified times. TreePL can use minimum/maximum bounds, such as 
+The pipeline uses one simple calibration format for all supported dating methods. Each calibration identifies an internal node by the MRCA of terminal taxa, so the input species tree does not need internal node labels.
 
 ```text
-mrca = calib1 taxonA taxonB
-min = calib1 66
-max = calib1 72
-
-mrca = calib2 taxonC taxonD
-min = calib2 120
-max = calib2 135
-```
-
-MD-Cat, wLogDate, LSD2, and TreePL also accept fixed node ages using either
-internal node labels or the MRCA of two terminal nodes:
-
-```text
-i1 8.055
-i7 2.812
-i16 3.393
-mrca(24,3) 7.534
+mrca(24,3) >=7.534
+mrca(24,3) <=10.511
 mrca(taxonA,taxonB) 66.0
 ```
 
-For `mrca(taxonA,taxonB)` entries, the pipeline labels the corresponding
-internal node before running dating methods that require node labels. For
-TreePL, the pipeline converts fixed-age entries to equivalent minimum and
-maximum bounds internally.
+Use `>=` for a minimum age, `<=` for a maximum age, and no operator for an
+exact age. A bounded calibration can be written as two lines with the same
+MRCA:
+
+```text
+mrca(taxonA,taxonB) >=66
+mrca(taxonA,taxonB) <=72
+```
+
+Internally, the pipeline converts this universal format to the format required by the selected dating method. TreePL and LSD2 support minimum and maximum
+bounds. MD-Cat and wLogDate currently support exact calibrations only; the pipeline reports an error if a bounded calibration is used with either method.
+For numeric fossil-style ages, the pipeline runs MD-Cat and wLogDate in
+backward-time mode, matching their documented `-b` usage.
+
+For `--method lsd2`, calibration dates can also use LSD2's date syntax:
+numeric dates or calendar dates in `year-month-day` format, exact dates,
+lower bounds with `l(...)`, upper bounds with `u(...)`, and intervals with
+`b(...,...)`. Tip labels, existing internal node labels, and MRCA definitions
+are accepted:
+
+```text
+A 2000-07-12
+n1 l(2001-05-11)
+C b(2001-04-11,2004-01-15)
+n2 u(2003-02-12)
+mrca(A,B,C) u(1980)
+```
+
+Exact calendar-date sampling times are also accepted with `--method mdcat`;
+the pipeline automatically passes MD-Cat's documented `-d` flag instead of
+`-b`. Calendar-date calibrations are otherwise passed through only for LSD2;
+TreePL and wLogDate require numeric ages.
+
+If no calibration file is provided, simple unit-ultrametric calibration will be used. 
 
 ### Outputs
 The output directory includes the following files
@@ -115,6 +138,8 @@ python run_pipeline.py \
 ```
 
 ## Simulated datasets
+
+For experiments in this study, we generated three sets of simulated datasets with gene tree discordance due to incomplete lineage sorting (ILS) and analyzed two avian biological datasets from [Harvey et. al. (2020)](https://www.science.org/doi/10.1126/science.aaz6970) and [Stiller et. al. (2024)](https://www.nature.com/articles/s41586-024-07323-1). The simulated datasets have model species trees with substitution-unit, generation-unit, and time-unit branch lengths. All datasets can be accessed from Dryad https://doi.org/10.5061/dryad.hmgqnk9xv.
 
 ### 30-taxon dataset
 This dataset has six model conditions with varying deviation from the molecular clock and inclusion of an outgroup, each with 100 replicates. The model conditions are specified as `outgroup.[has-OG].species.[DEV].genes.[DEV]` where `[has-OG]` is 1 when the dataset has an outgroup and 0 otherwise, and `[DEV]` shows the level of deviation from the clock (parameter α of the gamma distribution) that is set to 5 (low), 1.5 (medium), or 0.15 (high). Original dataset is from [Mai at al. (2017)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0182238) and available at [https://uym2.github.io/MinVar-Rooting/](https://uym2.github.io/MinVar-Rooting/). Below is a description of files in each directory.
@@ -201,3 +226,16 @@ This dataset has 8 model conditions with 50, 100, 200, 500, 1K, 2K, 5K, and 10K-
 - `genera_treepl_castlespro_concat.csv`: Age of different genera estimated using TreePL+CASLTES-Pro andTreePL+ConBL on the concatenation topology
 - `families_treepl_castlespro_concat.csv`: Age of different families estimated using TreePL+CASLTES-Pro andTreePL+ConBL on the concatenation topology
 - `suboscines_ltt.csv`: Lineage-through-time information for the four different dated trees (ASTRAL or CAML furnished with CASTLES-Pro or ConBL)
+
+## Citation
+If you use the pipeline or datasets, please cite the following paper:
+```bibtex
+@article{tabatabaee2026coalescent,
+  title={Coalescent-based branch length estimation improves dating of species trees},
+  author={Tabatabaee, Yasamin and Claramunt, Santiago and Mirarab, Siavash},
+  journal={Systematic Biology},
+  pages={syag038},
+  year={2026},
+  publisher={Oxford University Press}
+}
+```

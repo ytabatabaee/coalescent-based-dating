@@ -71,49 +71,150 @@ def parse_ci(ci_args):
     return str(samples_int), str(lower_float), str(upper_float)
 
 
-def normalize_age(age):
-    cleaned = age.strip().strip("`")
-
+def is_numeric_value(value):
     try:
-        float(cleaned)
+        float(value)
+        return True
     except ValueError:
-        sys.exit(f"[ERROR] Calibration age must be numeric: {age}")
+        return False
 
-    return cleaned
+
+def is_calendar_date(value):
+    return re.match(r"^\d{1,4}(?:-\d{1,2}){0,2}$", value) is not None
+
+
+def normalize_calibration_value(value, line_no):
+    cleaned = value.strip().strip("`")
+
+    if is_numeric_value(cleaned) or is_calendar_date(cleaned):
+        return cleaned
+
+    sys.exit(
+        f"[ERROR] Calibration date on line {line_no} must be numeric or "
+        f"year-month-day format: {value}"
+    )
+
+
+def parse_constraint_value(value, line_no):
+    stripped = value.strip()
+    wrapper_match = re.match(r"^(l|u|b)\s*\((.*)\)$", stripped, re.IGNORECASE)
+
+    if not wrapper_match:
+        return {
+            "exact": normalize_calibration_value(stripped, line_no),
+            "min": None,
+            "max": None,
+        }
+
+    wrapper = wrapper_match.group(1).lower()
+    contents = wrapper_match.group(2)
+
+    if wrapper in {"l", "u"}:
+        date = normalize_calibration_value(contents, line_no)
+        return {
+            "exact": None,
+            "min": date if wrapper == "l" else None,
+            "max": date if wrapper == "u" else None,
+        }
+
+    parts = [part.strip() for part in contents.split(",")]
+
+    if len(parts) != 2:
+        sys.exit(
+            f"[ERROR] Bounded calibration on line {line_no} must have two "
+            "dates"
+        )
+
+    return {
+        "exact": None,
+        "min": normalize_calibration_value(parts[0], line_no),
+        "max": normalize_calibration_value(parts[1], line_no),
+    }
+
+
+def apply_operator_constraint(constraints, operator, line_no):
+    if operator is None or operator == "=":
+        return constraints
+
+    if constraints["exact"] is None:
+        sys.exit(
+            f"[ERROR] Calibration line {line_no} cannot combine {operator} "
+            "with l(...), u(...), or b(...)"
+        )
+
+    exact = constraints["exact"]
+
+    if operator == ">=":
+        return {"exact": None, "min": exact, "max": None}
+
+    return {"exact": None, "min": None, "max": exact}
+
+
+def parse_calibration_constraints(value, operator, line_no):
+    constraints = parse_constraint_value(value, line_no)
+    return apply_operator_constraint(constraints, operator, line_no)
+
+
+def strip_inline_comment(line):
+    return line.split("#", 1)[0].strip()
 
 
 def parse_calibration_line(line, line_no):
-    stripped = line.strip()
+    stripped = strip_inline_comment(line)
 
-    if not stripped or stripped.startswith("#"):
+    if not stripped:
         return {"type": "skip"}
 
     if re.match(r"^(mrca|min|max)\s*=", stripped, re.IGNORECASE):
         return {"type": "treepl", "line": line.rstrip("\n")}
 
     mrca_match = re.match(
-        r"^mrca\s*\(\s*([^,()]+)\s*,\s*([^,()]+)\s*\)\s+(\S+)(?:\s+#.*)?$",
+        r"^mrca\s*\(\s*([^()]+?)\s*\)\s*(>=|<=|=)?\s*(.+)$",
         stripped,
         re.IGNORECASE
     )
 
     if mrca_match:
+        taxa = tuple(
+            taxon.strip()
+            for taxon in mrca_match.group(1).split(",")
+            if taxon.strip()
+        )
+
+        if len(taxa) < 2:
+            sys.exit(
+                f"[ERROR] Calibration MRCA on line {line_no} must include "
+                "at least two terminal taxa"
+            )
+
+        operator = mrca_match.group(2)
+
         return {
             "type": "mrca",
-            "taxa": (
-                mrca_match.group(1).strip(),
-                mrca_match.group(2).strip()
-            ),
-            "age": normalize_age(mrca_match.group(3))
+            "taxa": taxa,
+            "constraints": parse_calibration_constraints(
+                mrca_match.group(3),
+                operator,
+                line_no
+            )
         }
 
-    label_match = re.match(r"^(\S+)\s+(\S+)(?:\s+#.*)?$", stripped)
+    label_match = re.match(
+        r"^([^\s<>=]+)\s*(?:(>=|<=|=)\s*)?(.+)$",
+        stripped
+    )
 
     if label_match:
+        operator = label_match.group(2)
+
         return {
             "type": "label",
             "label": label_match.group(1),
-            "age": normalize_age(label_match.group(2))
+            "constraints": parse_calibration_constraints(
+                label_match.group(3),
+                operator,
+                line_no
+            )
         }
 
     sys.exit(
@@ -236,13 +337,94 @@ def get_mrca_node(tree, taxa):
     except Exception as exc:
         sys.exit(
             "[ERROR] Could not find MRCA for "
-            f"{taxa[0]} and {taxa[1]}: {exc}"
+            f"{', '.join(taxa)}: {exc}"
         )
+
+
+def format_mrca_label(taxa):
+    return f"mrca({','.join(taxa)})"
+
+
+def add_bound(bounds, key, label, constraints):
+    if key not in bounds:
+        bounds[key] = {"label": label, "min": None, "max": None, "exact": None}
+
+    if constraints["exact"] is not None:
+        bounds[key]["exact"] = constraints["exact"]
+        bounds[key]["min"] = constraints["exact"]
+        bounds[key]["max"] = constraints["exact"]
+        return
+
+    if constraints["min"] is not None:
+        bounds[key]["min"] = constraints["min"]
+
+    if constraints["max"] is not None:
+        bounds[key]["max"] = constraints["max"]
+
+
+def validate_bound(label, lower, upper):
+    if (
+        lower is not None
+        and upper is not None
+        and is_numeric_value(lower)
+        and is_numeric_value(upper)
+        and float(lower) > float(upper)
+    ):
+        sys.exit(
+            f"[ERROR] Calibration minimum is greater than maximum for {label}: "
+            f"{lower} > {upper}"
+        )
+
+
+def validate_numeric_calibration(label, bounds, method):
+    values = [
+        value
+        for value in (bounds["exact"], bounds["min"], bounds["max"])
+        if value is not None
+    ]
+
+    if method == "mdcat" and bounds["exact"] is not None:
+        return
+
+    if method != "lsd2" and any(not is_numeric_value(value) for value in values):
+        sys.exit(
+            f"[ERROR] Calendar-date calibrations are supported only with "
+            f"--method lsd2 or exact-date --method mdcat; {label} has a "
+            "non-numeric date"
+        )
+
+
+def labeled_calibration_age(bounds, method):
+    label = bounds["label"]
+    lower = bounds["min"]
+    upper = bounds["max"]
+    exact = bounds["exact"]
+
+    validate_bound(label, lower, upper)
+    validate_numeric_calibration(label, bounds, method)
+
+    if exact is not None:
+        return exact
+
+    if method in {"mdcat", "wlogdate"}:
+        sys.exit(
+            "[ERROR] Minimum/maximum calibration bounds are not supported "
+            f"with --method {method}; use exact MRCA ages instead"
+        )
+
+    if lower is not None and upper is not None:
+        return f"b({lower},{upper})"
+
+    if lower is not None:
+        return f"l({lower})"
+
+    return f"u({upper})"
 
 
 def prepare_treepl_calibrations(entries, tree_path, output):
     tree = None
     out_lines = []
+    calibration_bounds = {}
     calibration_index = 1
 
     for entry in entries:
@@ -253,30 +435,60 @@ def prepare_treepl_calibrations(entries, tree_path, output):
             out_lines.append(entry["line"])
             continue
 
-        calibration_name = f"pipeline_calib{calibration_index}"
-        calibration_index += 1
-
-        if entry["type"] == "mrca":
+        if entry["type"] == "mrca" and len(entry["taxa"]) == 2:
             taxon1, taxon2 = entry["taxa"]
+            key = ("taxa", tuple(sorted(entry["taxa"])))
         else:
             if tree is None:
                 tree = load_tree(tree_path)
 
-            node = find_node_by_label(tree, entry["label"])
+            if entry["type"] == "mrca":
+                label = format_mrca_label(entry["taxa"])
+                node = get_mrca_node(tree, entry["taxa"])
+            else:
+                label = entry["label"]
+                node = find_node_by_label(tree, label)
 
             if node is None:
                 sys.exit(
                     f"[ERROR] Calibration label not found in tree: "
-                    f"{entry['label']}"
+                    f"{label}"
                 )
 
-            taxon1, taxon2 = representative_mrca_taxa(node, entry["label"])
+            taxon1, taxon2 = representative_mrca_taxa(node, label)
+            key = ("node", id(node))
 
+        if key not in calibration_bounds:
+            calibration_name = f"pipeline_calib{calibration_index}"
+            calibration_index += 1
+            calibration_bounds[key] = {
+                "label": calibration_name,
+                "taxon1": taxon1,
+                "taxon2": taxon2,
+                "min": None,
+                "max": None,
+                "exact": None,
+            }
+
+        add_bound(
+            calibration_bounds,
+            key,
+            calibration_bounds[key]["label"],
+            entry["constraints"]
+        )
+
+    for bounds in calibration_bounds.values():
+        validate_bound(bounds["label"], bounds["min"], bounds["max"])
+        validate_numeric_calibration(bounds["label"], bounds, "treepl")
         out_lines.extend([
-            f"mrca = {calibration_name} {taxon1} {taxon2}",
-            f"min = {calibration_name} {entry['age']}",
-            f"max = {calibration_name} {entry['age']}",
+            f"mrca = {bounds['label']} {bounds['taxon1']} {bounds['taxon2']}",
         ])
+
+        if bounds["min"] is not None:
+            out_lines.append(f"min = {bounds['label']} {bounds['min']}")
+
+        if bounds["max"] is not None:
+            out_lines.append(f"max = {bounds['label']} {bounds['max']}")
 
     with open(output, "w") as f:
         f.write("\n".join(out_lines))
@@ -287,12 +499,18 @@ def prepare_treepl_calibrations(entries, tree_path, output):
     return output
 
 
-def prepare_labeled_calibrations(entries, tree_path, output_tree, output_calibrations):
+def prepare_labeled_calibrations(
+    entries,
+    tree_path,
+    output_tree,
+    output_calibrations,
+    method
+):
     tree = None
     labels = None
     label_index = 1
     mrca_labels = {}
-    out_lines = []
+    calibration_bounds = {}
     has_mrca = any(entry["type"] == "mrca" for entry in entries)
 
     if has_mrca:
@@ -316,7 +534,13 @@ def prepare_labeled_calibrations(entries, tree_path, output_tree, output_calibra
                     f"{entry['label']}"
                 )
 
-            out_lines.append(f"{entry['label']} {entry['age']}")
+            key = ("label", entry["label"])
+            add_bound(
+                calibration_bounds,
+                key,
+                entry["label"],
+                entry["constraints"]
+            )
             continue
 
         node = get_mrca_node(tree, entry["taxa"])
@@ -327,7 +551,21 @@ def prepare_labeled_calibrations(entries, tree_path, output_tree, output_calibra
             node.label = label
             mrca_labels[node_key] = label
 
-        out_lines.append(f"{mrca_labels[node_key]} {entry['age']}")
+        key = ("node", node_key)
+        add_bound(
+            calibration_bounds,
+            key,
+            mrca_labels[node_key],
+            entry["constraints"]
+        )
+
+    out_lines = [
+        f"{bounds['label']} {labeled_calibration_age(bounds, method)}"
+        for bounds in calibration_bounds.values()
+    ]
+
+    if method == "lsd2":
+        out_lines.insert(0, str(len(out_lines)))
 
     with open(output_calibrations, "w") as f:
         f.write("\n".join(out_lines))
@@ -377,7 +615,8 @@ def prepare_calibrations(tree_path, calibrations, method, intermediate_dir):
         entries,
         tree_path,
         output_tree,
-        output_calibrations
+        output_calibrations,
+        method
     )
 
 
@@ -409,22 +648,79 @@ def run_astral4(
     run(shell_join(cmd))
 
 
-def run_treepl(tree, calibrations, output_dir):
+def run_treepl(
+    tree,
+    calibrations,
+    output_dir,
+    smooth=100,
+    numsites=500000,
+    options=None
+):
     config = os.path.join(output_dir, "treepl.config")
     dated_tree = os.path.join(output_dir, "dated_tree.tre")
 
     with open(config, "w") as f:
         f.write(f"treefile = {tree}\n")
-        f.write("smooth = 100\n")
-        f.write("numsites = 500000\n")
+        f.write(f"smooth = {smooth}\n")
+        f.write(f"numsites = {numsites}\n")
         f.write(f"outfile = {dated_tree}\n\n")
 
         with open(calibrations) as c:
             f.write(c.read())
 
-    run(f"treePL {config}")
+        if options:
+            f.write("\n")
+            f.write("\n".join(options))
+            f.write("\n")
+
+    run(shell_join(["treePL", config]))
 
     return dated_tree
+
+
+def calibration_file_has_calendar_dates(calibrations):
+    with open(calibrations) as f:
+        for line in f:
+            if re.search(r"\b\d{4}-\d{1,2}(?:-\d{1,2})?\b", line):
+                return True
+
+    return False
+
+
+def treepl_options_from_args(args):
+    options = []
+
+    flag_options = {
+        "treepl_thorough": "thorough",
+        "treepl_prime": "prime",
+        "treepl_moredetailcvad": "moredetailcvad",
+    }
+
+    value_options = {
+        "treepl_opt": "opt",
+        "treepl_optad": "optad",
+        "treepl_optcvad": "optcvad",
+        "treepl_nthreads": "nthreads",
+    }
+
+    for attr, option in flag_options.items():
+        if getattr(args, attr):
+            options.append(option)
+
+    for attr, option in value_options.items():
+        value = getattr(args, attr)
+
+        if value is not None:
+            options.append(f"{option} = {value}")
+
+    return options
+
+
+def treepl_args_requested(args):
+    if args.treepl_smooth != 100 or args.treepl_numsites != 500000:
+        return True
+
+    return bool(treepl_options_from_args(args))
 
 
 def run_mdcat(
@@ -448,8 +744,14 @@ def run_mdcat(
         p,
         "-t",
         calibrations,
-        "-b",
     ]
+
+    has_calendar_dates = calibration_file_has_calendar_dates(calibrations)
+
+    if has_calendar_dates:
+        cmd.append("-d")
+    else:
+        cmd.append("-b")
 
     if seq_length is not None:
         cmd.extend(["-l", seq_length])
@@ -465,29 +767,51 @@ def run_mdcat(
 def run_wlogdate(tree, calibrations, output_dir):
     dated_tree = os.path.join(output_dir, "dated_tree.tre")
 
-    cmd = (
-        f"python launch_wLogDate.py "
-        f"-i {tree} "
-        f"-c {calibrations} "
-        f"-o {dated_tree}"
-    )
+    cmd = [
+        "python",
+        "launch_wLogDate.py",
+        "-i",
+        tree,
+        "-t",
+        calibrations,
+        "-o",
+        dated_tree,
+        "-b",
+    ]
 
-    run(cmd)
+    run(shell_join(cmd))
 
     return dated_tree
 
 
-def run_lsd2(tree, calibrations, output_dir):
+def run_lsd2(
+    tree,
+    calibrations,
+    output_dir,
+    seq_length=None,
+    min_branch_length=0.001
+):
     prefix = os.path.join(output_dir, "lsd2")
 
-    cmd = (
-        f"lsd2 "
-        f"-i {tree} "
-        f"-d {calibrations} "
-        f"-o {prefix}"
-    )
+    cmd = [
+        "lsd2",
+        "-i",
+        tree,
+        "-d",
+        calibrations,
+    ]
 
-    run(cmd)
+    if seq_length is not None:
+        cmd.extend(["-s", seq_length])
+
+    cmd.extend([
+        "-u",
+        min_branch_length,
+        "-o",
+        prefix,
+    ])
+
+    run(shell_join(cmd))
 
     dated_tree = prefix + ".date.nwk"
 
@@ -553,7 +877,9 @@ def main():
     )
 
     parser.add_argument(
+        "--mdcat-ci",
         "--CI",
+        dest="CI",
         nargs="+",
         default=None,
         metavar="CI",
@@ -565,9 +891,31 @@ def main():
 
     parser.add_argument(
         "--seq-length",
+        dest="seq_length",
         type=int,
         default=None,
-        help="Optional sequence length passed to MD-Cat with -l"
+        help="Optional sequence length passed to MD-Cat with -l or LSD2 with -s"
+    )
+
+    parser.add_argument(
+        "--mdcat-seq-length",
+        dest="seq_length",
+        type=int,
+        help=argparse.SUPPRESS
+    )
+
+    parser.add_argument(
+        "--lsd2-seq-length",
+        dest="seq_length",
+        type=int,
+        help=argparse.SUPPRESS
+    )
+
+    parser.add_argument(
+        "--lsd2-min-branch-length",
+        type=float,
+        default=0.001,
+        help="LSD2 -u minimum branch length value (default: 0.001)"
     )
 
     parser.add_argument(
@@ -575,6 +923,66 @@ def main():
         type=int,
         default=10,
         help="MD-Cat -p value (default: 10)"
+    )
+
+    parser.add_argument(
+        "--treepl-smooth",
+        type=float,
+        default=100,
+        help="TreePL smooth value (default: 100)"
+    )
+
+    parser.add_argument(
+        "--treepl-numsites",
+        type=int,
+        default=500000,
+        help="TreePL numsites value (default: 500000)"
+    )
+
+    parser.add_argument(
+        "--treepl-nthreads",
+        type=int,
+        default=None,
+        help="TreePL nthreads value"
+    )
+
+    parser.add_argument(
+        "--treepl-thorough",
+        action="store_true",
+        help="Add TreePL thorough option"
+    )
+
+    parser.add_argument(
+        "--treepl-prime",
+        action="store_true",
+        help="Add TreePL prime option"
+    )
+
+    parser.add_argument(
+        "--treepl-moredetailcvad",
+        action="store_true",
+        help="Add TreePL moredetailcvad option"
+    )
+
+    parser.add_argument(
+        "--treepl-opt",
+        type=int,
+        default=None,
+        help="TreePL opt value"
+    )
+
+    parser.add_argument(
+        "--treepl-optad",
+        type=int,
+        default=None,
+        help="TreePL optad value"
+    )
+
+    parser.add_argument(
+        "--treepl-optcvad",
+        type=int,
+        default=None,
+        help="TreePL optcvad value"
     )
 
     args = parser.parse_args()
@@ -586,17 +994,40 @@ def main():
             "--method mdcat"
         )
 
-    if args.seq_length is not None and args.method != "mdcat":
-        sys.exit("[ERROR] --seq-length is currently supported only with MD-Cat")
+    if args.seq_length is not None and args.method not in {"mdcat", "lsd2"}:
+        sys.exit("[ERROR] --seq-length is supported only with MD-Cat or LSD2")
+
+    if args.method != "lsd2" and args.lsd2_min_branch_length != 0.001:
+        sys.exit("[ERROR] --lsd2-min-branch-length is supported only with LSD2")
+
+    if args.method != "treepl" and treepl_args_requested(args):
+        sys.exit("[ERROR] --treepl-* options are supported only with TreePL")
 
     if args.seq_length is not None and args.seq_length <= 0:
         sys.exit("[ERROR] --seq-length must be positive")
+
+    if args.lsd2_min_branch_length <= 0:
+        sys.exit("[ERROR] --lsd2-min-branch-length must be positive")
 
     if args.gene_length is not None and args.gene_length <= 0:
         sys.exit("[ERROR] --gene-length must be positive")
 
     if args.mdcat_p <= 0:
         sys.exit("[ERROR] --mdcat-p must be positive")
+
+    if args.treepl_smooth <= 0:
+        sys.exit("[ERROR] --treepl-smooth must be positive")
+
+    if args.treepl_numsites <= 0:
+        sys.exit("[ERROR] --treepl-numsites must be positive")
+
+    positive_treepl_ints = {
+        "--treepl-nthreads": args.treepl_nthreads,
+    }
+
+    for option, value in positive_treepl_ints.items():
+        if value is not None and value <= 0:
+            sys.exit(f"[ERROR] {option} must be positive")
 
     check_exists(args.gene_trees, "Gene trees")
     check_exists(args.calibrations, "Calibration file")
@@ -642,7 +1073,10 @@ def main():
         run_treepl(
             dating_input,
             dating_calibrations,
-            args.output
+            args.output,
+            smooth=args.treepl_smooth,
+            numsites=args.treepl_numsites,
+            options=treepl_options_from_args(args)
         )
 
     elif args.method == "mdcat":
@@ -666,7 +1100,9 @@ def main():
         run_lsd2(
             dating_input,
             dating_calibrations,
-            args.output
+            args.output,
+            seq_length=args.seq_length,
+            min_branch_length=args.lsd2_min_branch_length
         )
 
     print("\nPipeline completed successfully.\n")

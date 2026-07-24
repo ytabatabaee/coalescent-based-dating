@@ -1,0 +1,11 @@
+name: cbdating
+
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+
+dependencies:
+  - python>=3.9,<3.13
+  - astral-tree
+  - newick_utils
