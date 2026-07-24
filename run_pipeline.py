@@ -499,6 +499,18 @@ def prepare_treepl_calibrations(entries, tree_path, output):
     return output
 
 
+def prepare_treepl_unit_calibration(tree_path, output):
+    tree = load_tree(tree_path)
+    taxon1, taxon2 = representative_mrca_taxa(tree.seed_node, "root")
+
+    with open(output, "w") as f:
+        f.write(f"mrca = pipeline_root {taxon1} {taxon2}\n")
+        f.write("min = pipeline_root 1\n")
+        f.write("max = pipeline_root 1\n")
+
+    return output
+
+
 def prepare_labeled_calibrations(
     entries,
     tree_path,
@@ -581,6 +593,13 @@ def prepare_labeled_calibrations(
 
 
 def prepare_calibrations(tree_path, calibrations, method, intermediate_dir):
+    if calibrations is None:
+        if method == "treepl":
+            output = os.path.join(intermediate_dir, "calibrations.treepl.txt")
+            return tree_path, prepare_treepl_unit_calibration(tree_path, output)
+
+        return tree_path, None
+
     entries = parse_calibrations(calibrations)
     parsed_entries = [entry for entry in entries if entry["type"] != "skip"]
 
@@ -742,16 +761,17 @@ def run_mdcat(
         dated_tree,
         "-p",
         p,
-        "-t",
-        calibrations,
     ]
 
-    has_calendar_dates = calibration_file_has_calendar_dates(calibrations)
+    if calibrations is not None:
+        cmd.extend(["-t", calibrations])
 
-    if has_calendar_dates:
-        cmd.append("-d")
-    else:
-        cmd.append("-b")
+        has_calendar_dates = calibration_file_has_calendar_dates(calibrations)
+
+        if has_calendar_dates:
+            cmd.append("-d")
+        else:
+            cmd.append("-b")
 
     if seq_length is not None:
         cmd.extend(["-l", seq_length])
@@ -772,12 +792,12 @@ def run_wlogdate(tree, calibrations, output_dir):
         "launch_wLogDate.py",
         "-i",
         tree,
-        "-t",
-        calibrations,
         "-o",
         dated_tree,
-        "-b",
     ]
+
+    if calibrations is not None:
+        cmd.extend(["-t", calibrations, "-b"])
 
     run(shell_join(cmd))
 
@@ -797,9 +817,12 @@ def run_lsd2(
         "lsd2",
         "-i",
         tree,
-        "-d",
-        calibrations,
     ]
+
+    if calibrations is None:
+        cmd.extend(["-a", 0, "-z", 1])
+    else:
+        cmd.extend(["-d", calibrations])
 
     if seq_length is not None:
         cmd.extend(["-s", seq_length])
@@ -840,8 +863,8 @@ def main():
 
     parser.add_argument(
         "--calibrations",
-        required=True,
-        help="Calibration file"
+        default=None,
+        help="Optional calibration file"
     )
 
     parser.add_argument(
@@ -859,8 +882,8 @@ def main():
 
     parser.add_argument(
         "--output",
-        required=True,
-        help="Output directory"
+        default=".",
+        help="Output directory (default: current directory)"
     )
 
     parser.add_argument(
@@ -997,6 +1020,16 @@ def main():
     if args.seq_length is not None and args.method not in {"mdcat", "lsd2"}:
         sys.exit("[ERROR] --seq-length is supported only with MD-Cat or LSD2")
 
+    if (
+        args.calibrations is None
+        and args.method == "lsd2"
+        and args.seq_length is None
+    ):
+        sys.exit(
+            "[ERROR] --seq-length is required with --method lsd2 when no "
+            "calibration file is provided"
+        )
+
     if args.method != "lsd2" and args.lsd2_min_branch_length != 0.001:
         sys.exit("[ERROR] --lsd2-min-branch-length is supported only with LSD2")
 
@@ -1030,7 +1063,10 @@ def main():
             sys.exit(f"[ERROR] {option} must be positive")
 
     check_exists(args.gene_trees, "Gene trees")
-    check_exists(args.calibrations, "Calibration file")
+
+    if args.calibrations is not None:
+        check_exists(args.calibrations, "Calibration file")
+
     check_executable(args.astral4_bin, "ASTRAL/CASTLES-Pro executable")
 
     if args.species_tree:

@@ -1,5 +1,8 @@
 # Coalescent-based dating
 
+[![DOI](https://img.shields.io/badge/DOI-10.1093%2Fsysbio%2Fsyag038-blue)](https://doi.org/10.1093/sysbio/syag038)
+[![Dryad](https://img.shields.io/badge/Dryad-10.5061%2Fdryad.hmgqnk9xv-green)](https://doi.org/10.5061/dryad.hmgqnk9xv)
+
 This repository contains the pipeline, datasets and scripts used in the following paper:
 
 - Y. Tabatabaee, S. Claramunt, S. Mirarab (2026). Coalescent-based branch length estimation improves dating of species trees. Systematic Biology, syag038. https://doi.org/10.1093/sysbio/syag038
@@ -35,11 +38,11 @@ The pipeline can be used to infer the species tree and date it, or use a user-pr
 python run_pipeline.py \
     --gene-trees <gene-tree-file> \
     [--species-tree <species-tree-file>] \
-    --calibrations <calibration-file> \
+    [--calibrations <calibration-file>] \
     --method <dating-method> \
     [--outgroup <outgroup-name>] \
     [--mdcat-ci "<num-samples> <lower-quantile> <upper-quantile>"] \
-    --output <output-directory>
+    [--output <output-directory>]
 ```
 
 ### Arguments
@@ -50,9 +53,9 @@ python run_pipeline.py \
 **Optional:**
 
 - `--species-tree`     optional user-provided species tree topology in Newick format
-- `--calibrations`     calibration file
+- `--calibrations`     optional calibration file; if omitted, the selected dating method creates a unit-ultrametric tree
 - `--outgroup`         optional outgroup taxon name for rooting the species tree before dating
-- `--output`           output directory
+- `--output`           output directory (default: current directory)
 - `--mdcat-ci`         MD-Cat confidence intervals (`num_samples lower_quantile upper_quantile`; `--CI` is also accepted)
 - `--seq-length`       optional sequence length passed to MD-Cat with `-l` or LSD2 with `-s`
 - `--lsd2-min-branch-length` LSD2 `-u` minimum branch length value (default: `0.001`)
@@ -66,6 +69,12 @@ python run_pipeline.py \
 The three `--mdcat-ci` values are user-controlled. For example, `--mdcat-ci "1000 0.025 0.975"` computes 95\% confidence intervals from 1000 posterior samples, while `--mdcat-ci "100 0.05 0.95"` uses 100 samples and the 5th/95th percentiles (90\% confidence intervals). Confidence intervals are currently supported only for `--method mdcat`.
 
 ### Calibration Format
+
+The calibration file is optional. If no calibration file is provided, the
+pipeline runs the selected dating method in its no-calibration/unit-ultrametric
+mode. For LSD2, this follows the supplement command using `-a 0 -z 1`; because
+that command includes `-s <seq-length>`, `--seq-length` is required with
+`--method lsd2` when no calibration file is supplied.
 
 The pipeline uses one simple calibration format for all supported dating methods. Each calibration identifies an internal node by the MRCA of terminal taxa, so the input species tree does not need internal node labels.
 
@@ -107,8 +116,6 @@ Exact calendar-date sampling times are also accepted with `--method mdcat`;
 the pipeline automatically passes MD-Cat's documented `-d` flag instead of
 `-b`. Calendar-date calibrations are otherwise passed through only for LSD2;
 TreePL and wLogDate require numeric ages.
-
-If no calibration file is provided, simple unit-ultrametric calibration will be used. 
 
 ### Outputs
 The output directory includes the following files
