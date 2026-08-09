@@ -7,5 +7,16 @@ channels:
 
 dependencies:
   - python>=3.9,<3.13
+  - pip
   - astral-tree
   - newick_utils
+  - make
+  - gxx
+  - curl
+  - nlopt
+  - adol-c
+  - pip:
+      - pytest
+      - dendropy>=5.0.0
+      - wlogdate==1.0.2
+      - git+https://github.com/uym2/MD-Cat.git

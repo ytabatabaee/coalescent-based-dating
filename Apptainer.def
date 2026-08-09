@@ -1,0 +1,20 @@
+Bootstrap: docker
+From: condaforge/miniforge3:24.11.0-0
+
+%files
+    . /opt/coalescent-based-dating
+
+%post
+    apt-get update
+    apt-get install -y --no-install-recommends build-essential curl ca-certificates
+    rm -rf /var/lib/apt/lists/*
+
+    cd /opt/coalescent-based-dating
+    conda env create -f environment.yml
+    /bin/bash -lc "source /opt/conda/etc/profile.d/conda.sh && conda activate cbdating && bash scripts/bootstrap_dependencies.sh --prefix /opt/cbd-tools"
+
+%environment
+    export PATH=/opt/cbd-tools/bin:/opt/conda/envs/cbdating/bin:$PATH
+
+%runscript
+    exec /bin/bash -lc "source /opt/conda/etc/profile.d/conda.sh && conda activate cbdating && python scripts/preflight_check.py --methods all"

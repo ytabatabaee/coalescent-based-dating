@@ -8,6 +8,14 @@ import shutil
 import subprocess
 import sys
 
+TOOL_ALIASES = {
+    "ASTRAL/CASTLES-Pro executable": ("astral4", "astral"),
+    "TreePL executable": ("treePL",),
+    "LSD2 executable": ("lsd2",),
+    "MD-Cat executable": ("md_cat.py", "mdcat"),
+    "wLogDate executable": ("launch_wLogDate.py", "launch_wLogDate"),
+}
+
 
 def run(cmd):
     print(f"\n[RUN] {cmd}\n")
@@ -23,13 +31,42 @@ def check_exists(path, label):
 
 
 def check_executable(path, label):
-    if os.path.exists(path):
-        return
+    resolve_executable(path, label)
 
-    if os.sep not in path and shutil.which(path):
-        return
 
-    sys.exit(f"[ERROR] {label} not found: {path}")
+def resolve_executable(path, label, aliases=None, required=True):
+    candidates = [path]
+
+    if aliases is None:
+        aliases = TOOL_ALIASES.get(label, ())
+
+    candidates.extend(aliases)
+    attempted = []
+
+    for candidate in candidates:
+        if candidate is None:
+            continue
+
+        attempted.append(candidate)
+
+        if os.sep in candidate:
+            if os.path.exists(candidate):
+                return candidate
+            continue
+
+        resolved = shutil.which(candidate)
+
+        if resolved:
+            return resolved
+
+    if required:
+        attempted_text = ", ".join(attempted)
+        sys.exit(
+            f"[ERROR] {label} not found. Tried: {attempted_text}. "
+            "Run scripts/preflight_check.py for setup guidance."
+        )
+
+    return None
 
 
 def mkdir(path):
@@ -673,7 +710,8 @@ def run_treepl(
     output_dir,
     smooth=100,
     numsites=500000,
-    options=None
+    options=None,
+    treepl_bin="treePL",
 ):
     config = os.path.join(output_dir, "treepl.config")
     dated_tree = os.path.join(output_dir, "dated_tree.tre")
@@ -692,7 +730,7 @@ def run_treepl(
             f.write("\n".join(options))
             f.write("\n")
 
-    run(shell_join(["treePL", config]))
+    run(shell_join([treepl_bin, config]))
 
     return dated_tree
 
@@ -748,20 +786,24 @@ def run_mdcat(
     output_dir,
     ci=None,
     seq_length=None,
-    p=10
+    p=10,
+    mdcat_bin="md_cat.py",
 ):
     dated_tree = os.path.join(output_dir, "dated_tree.tre")
 
-    cmd = [
-        "python3",
-        "md_cat.py",
+    if mdcat_bin.endswith(".py"):
+        cmd = ["python3", mdcat_bin]
+    else:
+        cmd = [mdcat_bin]
+
+    cmd.extend([
         "-i",
         tree,
         "-o",
         dated_tree,
         "-p",
         p,
-    ]
+    ])
 
     if calibrations is not None:
         cmd.extend(["-t", calibrations])
@@ -784,17 +826,20 @@ def run_mdcat(
     return dated_tree
 
 
-def run_wlogdate(tree, calibrations, output_dir):
+def run_wlogdate(tree, calibrations, output_dir, wlogdate_bin="launch_wLogDate.py"):
     dated_tree = os.path.join(output_dir, "dated_tree.tre")
 
-    cmd = [
-        "python",
-        "launch_wLogDate.py",
+    if wlogdate_bin.endswith(".py"):
+        cmd = ["python", wlogdate_bin]
+    else:
+        cmd = [wlogdate_bin]
+
+    cmd.extend([
         "-i",
         tree,
         "-o",
         dated_tree,
-    ]
+    ])
 
     if calibrations is not None:
         cmd.extend(["-t", calibrations, "-b"])
@@ -809,12 +854,13 @@ def run_lsd2(
     calibrations,
     output_dir,
     seq_length=None,
-    min_branch_length=0.001
+    min_branch_length=0.001,
+    lsd2_bin="lsd2",
 ):
     prefix = os.path.join(output_dir, "lsd2")
 
     cmd = [
-        "lsd2",
+        lsd2_bin,
         "-i",
         tree,
     ]
@@ -890,6 +936,30 @@ def main():
         "--astral4-bin",
         default="bin/astral4",
         help="Path to the ASTRAL/CASTLES-Pro executable (default: bin/astral4)"
+    )
+
+    parser.add_argument(
+        "--treepl-bin",
+        default="treePL",
+        help="Path to the TreePL executable (default: treePL)"
+    )
+
+    parser.add_argument(
+        "--lsd2-bin",
+        default="lsd2",
+        help="Path to the LSD2 executable (default: lsd2)"
+    )
+
+    parser.add_argument(
+        "--mdcat-bin",
+        default="md_cat.py",
+        help="Path to the MD-Cat executable/script (default: md_cat.py)"
+    )
+
+    parser.add_argument(
+        "--wlogdate-bin",
+        default="launch_wLogDate.py",
+        help="Path to the wLogDate executable/script (default: launch_wLogDate.py)"
     )
 
     parser.add_argument(
@@ -1067,7 +1137,27 @@ def main():
     if args.calibrations is not None:
         check_exists(args.calibrations, "Calibration file")
 
-    check_executable(args.astral4_bin, "ASTRAL/CASTLES-Pro executable")
+    astral4_bin = resolve_executable(
+        args.astral4_bin,
+        "ASTRAL/CASTLES-Pro executable",
+    )
+
+    treepl_bin = None
+    lsd2_bin = None
+    mdcat_bin = None
+    wlogdate_bin = None
+
+    if args.method == "treepl":
+        treepl_bin = resolve_executable(args.treepl_bin, "TreePL executable")
+    elif args.method == "lsd2":
+        lsd2_bin = resolve_executable(args.lsd2_bin, "LSD2 executable")
+    elif args.method == "mdcat":
+        mdcat_bin = resolve_executable(args.mdcat_bin, "MD-Cat executable")
+    elif args.method == "wlogdate":
+        wlogdate_bin = resolve_executable(
+            args.wlogdate_bin,
+            "wLogDate executable",
+        )
 
     if args.species_tree:
         check_exists(args.species_tree, "Species tree")
@@ -1088,7 +1178,7 @@ def main():
     print("\n=== STEP 1: ASTRAL/CASTLES-Pro SU tree estimation ===\n")
 
     run_astral4(
-        args.astral4_bin,
+        astral4_bin,
         args.gene_trees,
         su_tree,
         species_tree=args.species_tree,
@@ -1112,7 +1202,8 @@ def main():
             args.output,
             smooth=args.treepl_smooth,
             numsites=args.treepl_numsites,
-            options=treepl_options_from_args(args)
+            options=treepl_options_from_args(args),
+            treepl_bin=treepl_bin,
         )
 
     elif args.method == "mdcat":
@@ -1122,14 +1213,16 @@ def main():
             args.output,
             ci=ci,
             seq_length=args.seq_length,
-            p=args.mdcat_p
+            p=args.mdcat_p,
+            mdcat_bin=mdcat_bin,
         )
 
     elif args.method == "wlogdate":
         run_wlogdate(
             dating_input,
             dating_calibrations,
-            args.output
+            args.output,
+            wlogdate_bin=wlogdate_bin,
         )
 
     elif args.method == "lsd2":
@@ -1138,7 +1231,8 @@ def main():
             dating_calibrations,
             args.output,
             seq_length=args.seq_length,
-            min_branch_length=args.lsd2_min_branch_length
+            min_branch_length=args.lsd2_min_branch_length,
+            lsd2_bin=lsd2_bin,
         )
 
     print("\nPipeline completed successfully.\n")

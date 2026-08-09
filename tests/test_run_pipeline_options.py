@@ -1,5 +1,6 @@
 import os
 import shlex
+import shutil
 import sys
 from types import SimpleNamespace
 
@@ -220,3 +221,28 @@ def test_non_treepl_without_user_calibrations_passes_none(tmp_path):
 
     assert dating_tree == str(tree)
     assert calibrations is None
+
+
+def test_resolve_executable_uses_aliases(monkeypatch):
+    def fake_which(name):
+        if name == "astral":
+            return "/usr/bin/astral"
+        return None
+
+    monkeypatch.setattr(shutil, "which", fake_which)
+
+    resolved = run_pipeline.resolve_executable(
+        "bin/astral4",
+        "ASTRAL/CASTLES-Pro executable",
+    )
+    assert resolved == "/usr/bin/astral"
+
+
+def test_resolve_executable_returns_none_when_not_required(monkeypatch):
+    monkeypatch.setattr(shutil, "which", lambda _: None)
+    resolved = run_pipeline.resolve_executable(
+        "missing_tool",
+        "LSD2 executable",
+        required=False,
+    )
+    assert resolved is None
