@@ -21,16 +21,38 @@ We provide an end-to-end pipeline for coalescent-aware divergence time estimatio
 ![Dating pipeline overview](theory/pipeline.png)
 
 ### Installation
-To run the dating pipeline, follow these commands.
+To run the dating pipeline with project-managed dependencies, follow these commands.
 ```bash
 git clone https://github.com/ytabatabaee/coalescent-based-dating.git
 cd coalescent-based-dating
 
 conda env create -f environment.yml
 conda activate cbdating
+
+# Install method dependencies (TreePL, LSD2, MD-Cat wrappers) into ./.local
+bash scripts/bootstrap_dependencies.sh
+export PATH="$PWD/.local/bin:$PATH"
+
+# Verify dependencies before running the pipeline
+python scripts/preflight_check.py --methods all
 ```
 
-In addition, you need to install the ML-based dating methods you plan to use. The pipeline currently supports [TreePL](https://github.com/blackrim/treePL), [MD-Cat](https://github.com/uym2/MD-Cat), [wLogDate](https://github.com/uym2/wLogDate), and [LSD2](https://github.com/tothuhien/lsd2). To suggest additional dating methods, please submit an issue.
+The bootstrap script follows the installation approach of each upstream method:
+[TreePL](https://github.com/blackrim/treePL),
+[MD-Cat](https://github.com/uym2/MD-Cat),
+[wLogDate](https://github.com/uym2/wLogDate), and
+[LSD2](https://github.com/tothuhien/lsd2).
+
+### Reproducible container fallback
+
+If you want a fully reproducible setup with all tools preinstalled:
+
+```bash
+docker build -t cbdating .
+docker run --rm -it -v "$PWD:/work" -w /work cbdating
+```
+
+An Apptainer recipe is also provided at `Apptainer.def`.
 
 ### Usage
 
@@ -66,15 +88,21 @@ python run_pipeline.py \
 - `--treepl-nthreads`  optional TreePL `nthreads` value
 - `--treepl-thorough`, `--treepl-prime`, `--treepl-moredetailcvad` optional TreePL run flags used in the paper workflow
 - `--treepl-opt`, `--treepl-optad`, `--treepl-optcvad` optional TreePL optimizer values from a prime run
+- `--astral4-bin`       ASTRAL executable path/name (tries `astral4` and `astral` automatically)
+- `--treepl-bin`        TreePL executable path/name
+- `--mdcat-bin`         MD-Cat executable/script path/name
+- `--wlogdate-bin`      wLogDate executable/script path/name
+- `--lsd2-bin`          LSD2 executable path/name
 
 The three `--mdcat-ci` values are user-controlled. For example, `--mdcat-ci "1000 0.025 0.975"` computes 95\% confidence intervals from 1000 posterior samples, while `--mdcat-ci "100 0.05 0.95"` uses 100 samples and the 5th/95th percentiles (90\% confidence intervals). Confidence intervals are currently supported only for `--method mdcat`.
 
 ### Tests
 
-Run the software-option tests with:
+Run the software-option tests and preflight dependency checks with:
 
 ```bash
 python -m pytest tests/test_run_pipeline_options.py
+python scripts/preflight_check.py --methods all
 ```
 
 These tests validate generated command-line options and TreePL config files
